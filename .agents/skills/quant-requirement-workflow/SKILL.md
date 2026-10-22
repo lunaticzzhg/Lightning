@@ -1,34 +1,29 @@
 ---
 name: quant-requirement-workflow
-description: Define and deliver product requirements for the Lightning A-share and US-equity quantitative trading platform. Use for feature ideas, PRDs, prototypes, technical research, design, implementation, or changes to an existing requirement; skip general questions and unrelated maintenance.
+description: 将 Lightning 量化平台的想法或变更梳理为需求索引、PRD、原型和技术方案；用于产品需求定义与方案阶段，不替代页面视觉设计、代码开发或独立测试用例设计。
 ---
 
-# Quant requirement workflow
+# 量化需求工作流
 
-Work at the stage the user requested. If the user is only discussing an idea or explicitly says not to start, keep the work in chat. If implementation is requested, prepare the relevant requirement artifacts before coding and keep them aligned with the result.
+只推进到用户要求的阶段。以 [产品愿景](../../../docs/product/vision.md)、[Roadmap](../../../docs/product/roadmap.md) 和现有需求为背景；这些文档拥有产品事实，Skill 不重复规定当前平台范围。
 
-This is a small internal platform. The current starting scope is A-share and US-equity daily strategies with broker adapters; high-frequency trading is a later possibility. Treat these as current context, not permanent requirements. Keep documents short enough for the actual change.
+## 从想法到 PRD
 
-## Find or create the requirement
+1. 先查 `docs/requirements/`，已有需求就更新，避免重复编号；新需求从 `docs/templates/` 建立索引和 PRD。索引只放目标、状态、实际存在的产物链接和关键决定。
+2. 保留原始想法，识别使用者、场景、当前问题、预期结果和已知边界。缺失信息只有影响范围或验收时才问；推断要标明。
+3. 写一条正常流程及重要异常。把可观察行为写成带编号的需求和验收方式；实现选择留给技术方案。
+4. 有界面时做可操作的交互原型，覆盖关键反馈状态；无界面时标“不适用”。如果任务要求效果图或视觉规范，转用 `quant-web-visual-design`。原型和 PRD 从需求索引链接。
 
-1. Check `docs/requirements/` for an existing requirement covering the request. Update it instead of opening a duplicate. For a new requirement, choose an unused `REQ-...` identifier and create `docs/requirements/【需求编号】/README.md` from `docs/templates/requirement-index.md`.
-2. Keep the index as the entry point. Link only artifacts that exist, using relative links. Update status, important decisions, and changes as the work progresses.
+## 从 PRD 到技术方案
 
-## Turn an idea into a PRD and prototype
+先用简短架构说明回答：入口在哪、谁决定、事实存在哪、正常流程怎样结束。简单需求可用一段文字；复杂需求用一张小图。概念边界不自动变成类、表或服务。
 
-1. Preserve the original idea. Identify who has the problem, when it occurs, what they do today, what outcome they need, and which boundaries are already known. Check existing project context before asking questions. Separate facts from assumptions; ask only about unknowns that would change the scope or acceptance criteria.
-2. Draft one normal user flow and the important failure flows. Convert each meaningful step or rule into a numbered, observable requirement: condition or action → system response → how to check it. Check that every goal is covered and remove details that prescribe an implementation without a product reason.
-3. Use `docs/templates/prd.md` to write `prd.md`. Record scope exclusions, dependencies, and open questions without filling gaps with invented facts. For a user interface, derive prototype screens and feedback states from the flows, then create or link a reviewable prototype. For a backend-only change, mark the prototype as not applicable. Put its link in the PRD and index.
+随后按 `docs/templates/technical-design.md` 将需求编号映射到数据、接口、失败处理和验证。先查已有实现及[架构基线](../../../docs/architecture/target-architecture.md)，再比较真正影响选择的方案；记录官方依据、实测与待验证事项。用户要求文件级计划时，列确切路径与职责，不重复 PRD。
 
-## Derive and research the technical solution
+涉及行情或交易时，只核对本需求相关的市场规则、数据权利、订单与账户状态、风控、成本和对账。分钟级时效与标的规模需要用代表性负载验证；未知的高频目标不触发提前建设。
 
-1. For each important PRD requirement, identify required data, state changes, external dependencies, failure behavior, and how to verify the result. Group the work into modules and interfaces; map the requirement identifiers to that design in `technical-design.md`, based on `docs/templates/technical-design.md`.
-2. Research only decisions with meaningful alternatives or uncertainty. State the decision question and must-have criteria before choosing candidates. Compare viable options using current primary documentation, provider terms, and focused experiments when a decisive point cannot be established from documents. Record links, check dates, verified limits, trade-offs, and unknowns. Keep short research in the technical design; use a separate linked record only when the evidence is substantial. Do not present an untested assumption as a measured result.
-3. For trading or market data, check the applicable market rules, broker API permissions and limits, data usage rights, order and account states, risk controls, and reconciliation. Address the markets involved in this requirement. Design for the stated daily-frequency need; note a future high-frequency boundary only when it changes today's interfaces.
-4. Explain the selected design, key data and interfaces, failure recovery, tests, and a safe way to enable or revert it. If an existing choice is sufficient, record that briefly instead of manufacturing a comparison or proof of concept.
+## 交接与维护
 
-## Implement and close out
+需要单独设计测试用例时用 `quant-test-case-design`；进入代码开发时用 `quant-feature-development`；复杂链路审视用 `quant-flow-review`。更新需求行为或方案时，同步修改受影响文档。
 
-When development is in scope, implement against the PRD and design, then verify the acceptance criteria. Record actual test environment, cases, results, and remaining limits in a concise test report. Link the report and any release record from the requirement index. If implementation changes the agreed behavior or design, update the affected documents in the same work.
-
-Do not invent approvals, test results, vendor permissions, or regulatory conclusions. Keep the user's explicit stage boundary and any existing authorization in force.
+每个事实只在主文档维护一次：索引放入口，PRD 放行为，技术方案放实现，测试报告放实际结果。不要虚构批准、实测、供应商许可或法规结论。

@@ -1,5 +1,7 @@
-# Project working agreement
+# 项目协作约定
 
-For each product requirement, follow `quant-requirement-workflow` in `.agents/skills/quant-requirement-workflow/SKILL.md`. Maintain one requirement index under `docs/requirements/【需求编号】/README.md` and link its PRD, prototype where applicable, technical solution, and test report. Use the lightweight templates in `docs/templates/`.
+面向人的回复和文档使用中文，先说结论，文字简洁；精简时保留关键事实、常见异常和未验证事项。
 
-Work in this order: define the requirement and prototype, derive the technical solution, then develop and verify. Keep the documents consistent with changes. When the user asks only to discuss or to stop at a stage, do not proceed beyond that request.
+处理任务时按 [.agents/skills/INDEX.md](.agents/skills/INDEX.md) 选择 Skill。每项产品需求使用 `quant-requirement-workflow`，在 `docs/requirements/【需求编号】/README.md` 维护索引，链接 PRD、适用的原型或页面设计、技术方案及测试报告；使用 `docs/templates/` 中的轻量模板。
+
+按“需求与原型 → 技术方案 → 开发与验证”推进，并使文档与结果一致。用户只要求讨论或停在某阶段时，不越过该阶段。
