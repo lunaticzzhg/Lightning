@@ -5,3 +5,5 @@
 处理任务时按 [.agents/skills/INDEX.md](.agents/skills/INDEX.md) 选择 Skill。每项产品需求使用 `quant-requirement-workflow`，在 `docs/requirements/【需求编号】/README.md` 维护索引，链接 PRD、适用的原型或页面设计、技术方案及测试报告；使用 `docs/templates/` 中的轻量模板。
 
 按“需求与原型 → 技术方案 → 开发与验证”推进，并使文档与结果一致。用户只要求讨论或停在某阶段时，不越过该阶段。
+
+编写每阶段 PRD 时，先从最终产品的使用流程倒推本阶段需要固定的概念、数据和衔接规则；写清本阶段交付什么、后续阶段怎样沿用，避免以后推翻已保存的数据或用户流程。具体实现留给技术方案。
