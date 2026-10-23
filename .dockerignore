@@ -1,0 +1,13 @@
+.git
+.venv
+web/node_modules
+web/dist
+.pytest_cache
+__pycache__
+packaging
+docs
+*.log
+deploy/local/secrets
+deploy/test/secrets
+deploy/local/.env
+deploy/restore/secrets

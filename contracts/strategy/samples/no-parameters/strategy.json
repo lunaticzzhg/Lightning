@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "interface_version": 1,
+  "name": "无参数示例",
+  "description": "展示无参数版本",
+  "markets": ["US"],
+  "bar_interval": "1m",
+  "required_fields": ["close"],
+  "entrypoint": "strategy:on_bar",
+  "python": "3.13",
+  "dependencies": [],
+  "parameters": []
+}

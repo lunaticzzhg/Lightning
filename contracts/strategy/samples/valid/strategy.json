@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "interface_version": 1,
+  "name": "双均线示例",
+  "description": "根据分钟行情调整目标持仓",
+  "markets": ["CN", "US"],
+  "bar_interval": "1m",
+  "required_fields": ["open", "high", "low", "close", "volume"],
+  "entrypoint": "strategy:on_bar",
+  "python": "3.13",
+  "dependencies": [],
+  "parameters": [
+    {"name": "fast_window", "type": "integer", "required": true, "default": 5, "min": 1},
+    {"name": "mode", "type": "enum", "required": false, "default": "normal", "options": ["normal", "cautious"]}
+  ]
+}

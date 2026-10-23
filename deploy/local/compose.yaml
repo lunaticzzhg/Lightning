@@ -1,0 +1,57 @@
+name: lightning-req001
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: lightning
+      MYSQL_USER: lightning_app
+      MYSQL_PASSWORD_FILE: /run/secrets/app_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/root_password
+      MYSQL_ROOT_HOST: '%'
+    command: ["--max_allowed_packet=64M"]
+    secrets: [app_password, root_password]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+    image: ${LIGHTNING_IMAGE:-lightning-app:local}
+    command: ["python", "scripts/migrate.py"]
+    environment:
+      LIGHTNING_DB_USER: root
+      LIGHTNING_DB_PASSWORD_FILE: /run/secrets/root_password
+    secrets: [root_password]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+    image: ${LIGHTNING_IMAGE:-lightning-app:local}
+    environment:
+      LIGHTNING_DB_PASSWORD_FILE: /run/secrets/app_password
+      LIGHTNING_ALLOWED_HOSTS: 127.0.0.1,localhost
+      LIGHTNING_TRUSTED_PROXIES: 127.0.0.1
+    secrets: [app_password]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${LIGHTNING_PORT_BIND:-8000}:8000"
+    restart: unless-stopped
+secrets:
+  app_password:
+    file: ./secrets/app_password
+  root_password:
+    file: ./secrets/root_password
+volumes:
+  mysql_data:

@@ -1,0 +1,74 @@
+name: lightning-test
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: lightning
+      MYSQL_USER: lightning_app
+      MYSQL_PASSWORD_FILE: /run/secrets/app_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/root_password
+      MYSQL_ROOT_HOST: '%'
+    command: ["--max_allowed_packet=64M"]
+    secrets: [app_password, root_password]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: ${LIGHTNING_IMAGE:?Set LIGHTNING_IMAGE to a tested immutable image tag or digest}
+    command: ["python", "scripts/migrate.py"]
+    environment:
+      LIGHTNING_DB_USER: root
+      LIGHTNING_DB_PASSWORD_FILE: /run/secrets/root_password
+    secrets: [root_password]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  app:
+    image: ${LIGHTNING_IMAGE:?Set LIGHTNING_IMAGE to a tested immutable image tag or digest}
+    environment:
+      LIGHTNING_DB_PASSWORD_FILE: /run/secrets/app_password
+      LIGHTNING_ALLOWED_HOSTS: ${TEST_DOMAIN:?Set TEST_DOMAIN}
+      LIGHTNING_TRUSTED_PROXIES: 172.30.77.10
+    secrets: [app_password]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  gateway:
+    image: caddy:2.10
+    environment:
+      TEST_DOMAIN: ${TEST_DOMAIN:?Set TEST_DOMAIN}
+      ACCESS_USER: ${ACCESS_USER:?Set ACCESS_USER}
+      ACCESS_PASSWORD_HASH: ${ACCESS_PASSWORD_HASH:?Set ACCESS_PASSWORD_HASH}
+    ports:
+      - "${HTTP_BIND:-80}:80"
+      - "${HTTPS_BIND:-443}:443"
+    volumes:
+      - ${CADDYFILE_PATH:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    networks:
+      default:
+        ipv4_address: 172.30.77.10
+    restart: unless-stopped
+secrets:
+  app_password:
+    file: ./secrets/app_password
+  root_password:
+    file: ./secrets/root_password
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24

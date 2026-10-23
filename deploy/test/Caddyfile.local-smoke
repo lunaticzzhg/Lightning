@@ -1,0 +1,7 @@
+localhost {
+    tls internal
+    basic_auth {
+        {$ACCESS_USER} {$ACCESS_PASSWORD_HASH}
+    }
+    reverse_proxy app:8000
+}

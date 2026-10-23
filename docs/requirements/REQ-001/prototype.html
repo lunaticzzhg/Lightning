@@ -46,9 +46,6 @@
     .version-option { width: 100%; border: 1px solid #dce5e9; background: #fff; color: #193044; text-align: left; border-radius: 8px; padding: 12px; line-height: 1.5; }
     .version-option.active { border-color: #0b786e; box-shadow: inset 3px 0 #0b786e; }
     .version-option span { display: block; font-size: 12px; color: #70838d; }
-    .config-row { border-top: 1px solid #e7edef; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .config-row strong { font-size: 14px; }
-    .config-row p { margin: 4px 0 0; font-size: 12px; color: #6c808a; }
     dl { display: grid; grid-template-columns: 105px 1fr; gap: 11px 13px; margin: 0; font-size: 14px; }
     dt { color: #71848e; } dd { margin: 0; overflow-wrap: anywhere; }
     hr { border: 0; border-top: 1px solid #e5ecef; margin: 21px 0; }
@@ -65,18 +62,11 @@
     .param:last-child { border-bottom: 0; }
     .param strong { font-size: 13px; }
     .param span { display: block; margin-top: 3px; color: #6c808a; font-size: 12px; }
-    .history { margin: 0; padding: 0; list-style: none; }
-    .history li { border-top: 1px solid #e7edef; padding: 12px 0; font-size: 13px; }
-    .history li:first-child { border-top: 0; }
-    .history time { color: #71848e; margin-left: 9px; }
-    .history p { color: #617783; margin: 5px 0 0; }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    .grid .card { margin: 0; }
     .message { margin-bottom: 18px; padding: 11px 14px; border-radius: 8px; font-size: 13px; line-height: 1.55; }
     .message.success { background: #eaf7ef; color: #246443; border: 1px solid #b9dec6; }
     .message.error { background: #fff0ee; color: #983c30; border: 1px solid #ecc0b8; }
     .message.info { background: #edf5f8; color: #355f73; border: 1px solid #c9dce5; }
-    @media (max-width: 800px) { .app { grid-template-columns: 1fr; align-content: start; } aside { padding: 10px 16px; } .brand { padding: 5px 3px 12px; } nav { display: flex; overflow-x: auto; } nav button { white-space: nowrap; } main { padding: 24px 18px 50px; } .grid, .two-col { grid-template-columns: 1fr; } }
+    @media (max-width: 800px) { .app { grid-template-columns: 1fr; align-content: start; } aside { padding: 10px 16px; } .brand { padding: 5px 3px 12px; } nav { display: flex; overflow-x: auto; } nav button { white-space: nowrap; } main { padding: 24px 18px 50px; } .two-col { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .page-head, .item { flex-direction: column; align-items: stretch; } .head-actions { justify-content: flex-start; } }
   </style>
 </head>
@@ -93,118 +83,136 @@
   <script>
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const stamp = () => new Date().toLocaleString('zh-CN', { hour12: false });
-    const parameters = [
-      { label: '窗口长度', type: '整数', rule: '必填 · 1～120 · 默认 20' },
-      { label: '突破阈值', type: '小数', rule: '必填 · 0～1 · 默认 0.5' },
-      { label: '启用过滤', type: '布尔值', rule: '默认是' }
-    ];
-    const initial = new URLSearchParams(location.search).has('empty') ? { versions: [], configs: [] } : {
-      versions: [
-        { id: 'V001', strategy: '分钟突破策略', file: 'minute_breakout_v1.zip', time: '2026-10-20 14:10', checksum: 'a8f231c0', parameters },
-        { id: 'V002', strategy: '分钟突破策略', file: 'minute_breakout_v2.zip', time: '2026-10-22 10:20', checksum: 'b7e419d2', parameters }
+    const query = new URLSearchParams(location.search);
+    const state = {
+      strategies: query.has('empty') ? [] : [
+        { id: 'S001', name: '分钟突破策略', description: '根据分钟行情识别突破信号' },
+        { id: 'S002', name: '双均线策略', description: '根据两条均线的变化调整目标持仓' }
       ],
-      configs: [{ id: 'C001', name: '默认参数', versionId: 'V002', revisions: [
-        { number: 1, time: '2026-10-22 10:30', values: { lookback: 10, threshold: 0.4, enabled: true } },
-        { number: 2, time: '2026-10-22 11:35', values: { lookback: 20, threshold: 0.5, enabled: true } }
-      ] }]
+      versions: query.has('empty') ? [] : [
+        { id: 'V001', strategyId: 'S001', file: 'minute_breakout_v1.zip', time: '2026-10-20 14:10', checksum: 'a8f231c0', parameters: [
+          { label: '窗口长度', type: '整数', rule: '必填 · 1～120 · 默认 10' },
+          { label: '突破阈值', type: '小数', rule: '必填 · 0～1 · 默认 0.4' }
+        ] },
+        { id: 'V002', strategyId: 'S001', file: 'minute_breakout_v2.zip', time: '2026-10-22 10:20', checksum: 'b7e419d2', parameters: [
+          { label: '窗口长度', type: '整数', rule: '必填 · 1～120 · 默认 20' },
+          { label: '突破阈值', type: '小数', rule: '必填 · 0～1 · 默认 0.5' },
+          { label: '启用过滤', type: '布尔值', rule: '默认是' }
+        ] },
+        { id: 'V003', strategyId: 'S002', file: 'dual_ma_v1.zip', time: '2026-10-22 15:30', checksum: 'c1e904ad', parameters: [
+          { label: '短均线周期', type: '整数', rule: '必填 · 2～60 · 默认 5' },
+          { label: '长均线周期', type: '整数', rule: '必填 · 10～240 · 默认 30' },
+          { label: '交易市场', type: '枚举', rule: 'A 股 / 美股 · 默认 A 股' }
+        ] }
+      ],
+      page: query.get('page') || 'strategies',
+      selectedStrategyId: 'S001',
+      selectedVersionId: 'V002',
+      message: null
     };
-    const state = { page: 'strategies', versions: initial.versions, configs: initial.configs, selectedVersionId: 'V002', selectedConfigId: 'C001', editingConfigId: null, message: null };
     const main = document.getElementById('main');
-    const version = () => state.versions.find(v => v.id === state.selectedVersionId);
-    const config = () => state.configs.find(c => c.id === state.selectedConfigId);
-    function show(message, type='info') { state.message = { text: message, type }; render(); }
-    function go(page) { state.page = page; state.message = null; render(); window.scrollTo(0, 0); }
-    function head(title, subtitle='', actions='') { return `<div class="page-head"><div><h1>${title}</h1>${subtitle ? `<p>${subtitle}</p>` : ''}</div><div class="head-actions">${actions}</div></div>`; }
-    function groups() {
-      const result = new Map();
-      for (const item of state.versions) {
-        const group = result.get(item.strategy) || { name: item.strategy, versions: [] };
-        group.versions.push(item); result.set(item.strategy, group);
-      }
-      return [...result.values()];
+    const strategy = () => state.strategies.find(item => item.id === state.selectedStrategyId);
+    const version = () => state.versions.find(item => item.id === state.selectedVersionId);
+    const versionsFor = id => state.versions.filter(item => item.strategyId === id);
+    const button = (label, action, id = '', primary = false) => `<button type="button" class="btn${primary ? ' primary' : ''}" data-action="${action}" data-id="${esc(id)}">${label}</button>`;
+    function head(title, subtitle = '', actions = '') {
+      return `<div class="page-head"><div><h1>${esc(title)}</h1>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}</div><div class="head-actions">${actions}</div></div>`;
     }
     function strategiesPage() {
-      const actions = `<button class="btn primary" data-action="upload-page">上传策略包</button>`;
-      if (!state.versions.length) return head('策略', '管理策略代码版本', actions) + `<section class="card empty"><h2>还没有策略</h2><p>上传 Python 策略包后，即可查看代码版本并创建参数配置。</p><button class="btn primary" data-action="upload-page">上传策略包</button></section>`;
-      return head('策略', `${groups().length} 个策略`, actions) + groups().map(group => {
-        const latest = group.versions.at(-1);
-        return `<article class="item"><div><h2>${esc(group.name)}</h2><p>${group.versions.length} 个代码版本 · 最新 ${esc(latest.id)} · ${esc(latest.time)}</p></div><button class="btn" data-action="view-version" data-id="${latest.id}">查看策略</button></article>`;
+      const actions = button('上传新策略', 'upload-new', '', true);
+      if (!state.strategies.length) return head('策略', '管理策略及其代码版本', actions) +
+        `<section class="card empty"><h2>还没有策略</h2><p>上传 Python 策略包，创建第一个策略和代码版本。</p>${actions}</section>`;
+      const rows = state.strategies.map(item => {
+        const related = versionsFor(item.id);
+        const latest = related.at(-1);
+        return `<article class="item"><div><h2>${esc(item.name)}</h2><p>${esc(item.description)}</p><p>${related.length} 个代码版本 · 最新 ${esc(latest.id)} · ${esc(latest.time)}</p></div>${button('查看策略', 'open-strategy', item.id)}</article>`;
       }).join('');
-    }
-    function uploadPage() {
-      return head('上传策略包', '上传后会生成新的代码版本', `<button class="btn" data-action="strategies-page">返回策略</button>`) + `<section class="card" style="max-width:700px"><form id="upload-form"><div class="field"><label for="package-file">Python 策略包 <em>*</em></label><input id="package-file" name="package" type="file"><p class="field-error" id="package-error"></p></div><div class="actions"><button class="btn primary" type="submit">上传</button></div></form></section>`;
+      return head('策略', `${state.strategies.length} 个策略`, actions) + rows;
     }
     function versionPage() {
       const selected = version();
-      if (!selected) { state.page = 'strategies'; return strategiesPage(); }
-      const related = state.versions.filter(v => v.strategy === selected.strategy).reverse();
-      const choices = related.map(v => `<button class="version-option ${v.id === selected.id ? 'active' : ''}" data-action="view-version" data-id="${v.id}" aria-current="${v.id === selected.id ? 'true' : 'false'}"><strong>${esc(v.id)}</strong><span>${esc(v.time)}</span></button>`).join('');
-      const params = selected.parameters.map(p => `<div class="param"><strong>${esc(p.label)}</strong><span>${esc(p.type)} · ${esc(p.rule)}</span></div>`).join('');
-      const configs = [...state.configs].filter(c => c.versionId === selected.id).reverse();
-      const configRows = configs.length ? configs.map(item => `<div class="config-row"><div><strong>${esc(item.name)}</strong><p>${esc(item.id)} · ${item.revisions.length} 次修订</p></div><button class="btn" data-action="view-config" data-id="${item.id}">查看配置</button></div>`).join('') : '<p class="muted small">此版本还没有参数配置。</p>';
-      return head(selected.strategy, '选择代码版本，查看或新建该版本的参数配置', `<button class="btn" data-action="strategies-page">返回策略</button><button class="btn" data-action="upload-page">上传新版本</button>`) + `<div class="two-col"><section class="card"><h2>代码版本</h2><div class="stack">${choices}</div></section><div><section class="card"><div class="row"><h2>${esc(selected.id)}</h2><span class="pill gray">只读</span></div><dl><dt>上传时间</dt><dd>${esc(selected.time)}</dd><dt>策略包</dt><dd>${esc(selected.file)}</dd><dt>文件校验值</dt><dd>${esc(selected.checksum)}</dd></dl><hr><h2>开放参数</h2>${params}</section><section class="card"><div class="row"><h2>参数配置</h2><button class="btn primary" data-action="new-config" data-id="${selected.id}">新建配置</button></div>${configRows}</section></div></div>`;
+      const owner = strategy();
+      if (!selected || !owner) return strategiesPage();
+      const choices = [...versionsFor(owner.id)].reverse().map(item => `<button class="version-option ${item.id === selected.id ? 'active' : ''}" data-action="view-version" data-id="${esc(item.id)}" aria-current="${item.id === selected.id ? 'true' : 'false'}"><strong>${esc(item.id)}</strong><span>${esc(item.time)}</span></button>`).join('');
+      const params = selected.parameters.length
+        ? selected.parameters.map(item => `<div class="param"><strong>${esc(item.label)}</strong><span>${esc(item.type)} · ${esc(item.rule)}</span></div>`).join('')
+        : '<p class="muted small">该版本没有可调整参数。</p>';
+      return head(owner.name, owner.description, button('返回策略列表', 'strategies') + button('上传新版本', 'upload-version', '', true)) +
+        `<div class="two-col"><section class="card"><h2>代码版本</h2><div class="stack">${choices}</div></section><section class="card"><div class="row"><h2>${esc(selected.id)}</h2><span class="pill gray">已导入，未运行验证</span></div><dl><dt>所属策略</dt><dd>${esc(owner.name)} · ${esc(owner.id)}</dd><dt>上传时间</dt><dd>${esc(selected.time)}</dd><dt>原始代码包</dt><dd>${esc(selected.file)}</dd><dt>文件校验值</dt><dd>${esc(selected.checksum)}</dd></dl><hr><h2>参数定义</h2>${params}<hr>${button('下载原始包', 'download-package', selected.id)}</section></div>`;
     }
-    function configFormPage() {
-      const editing = state.configs.find(c => c.id === state.editingConfigId);
-      const chosenId = editing?.versionId || state.selectedVersionId || state.versions.at(-1)?.id;
-      if (!chosenId) { state.page = 'strategies'; return strategiesPage(); }
-      const linked = state.versions.find(v => v.id === chosenId);
-      if (!linked) { state.page = 'strategies'; return strategiesPage(); }
-      const prior = editing?.revisions.at(-1).values || { lookback: 20, threshold: 0.5, enabled: true };
-      return head(editing ? '修改参数配置' : '新建参数配置', `${esc(linked.strategy)} · ${esc(chosenId)}${editing ? ' · 本次保存将新增修订记录' : ''}`, `<button class="btn" data-action="view-version" data-id="${esc(chosenId)}">返回代码版本</button>`) + `<section class="card" style="max-width:740px"><form id="config-form" novalidate><div class="field"><label for="config-name">配置名称 <em>*</em></label><input id="config-name" name="name" value="${esc(editing?.name || '')}" placeholder="例如：默认参数"><p class="field-error" id="name-error"></p></div><div class="field"><label>所属代码版本</label><p>${esc(linked.strategy)} · ${esc(chosenId)}</p></div><hr><div class="grid"><div class="field"><label for="lookback">窗口长度 <em>*</em></label><input id="lookback" name="lookback" type="number" min="1" max="120" step="1" value="${prior.lookback}"><p class="hint">整数，1～120</p><p class="field-error" id="lookback-error"></p></div><div class="field"><label for="threshold">突破阈值 <em>*</em></label><input id="threshold" name="threshold" type="number" min="0" max="1" step="any" value="${prior.threshold}"><p class="hint">小数，0～1</p><p class="field-error" id="threshold-error"></p></div></div><div class="field" style="max-width:350px"><label for="enabled">启用过滤</label><select id="enabled" name="enabled"><option value="true" ${prior.enabled ? 'selected' : ''}>是</option><option value="false" ${!prior.enabled ? 'selected' : ''}>否</option></select></div><div class="actions"><button class="btn primary" type="submit">${editing ? '保存新修订' : '保存配置'}</button><button class="btn" type="button" data-action="view-version" data-id="${esc(chosenId)}">取消</button></div></form></section>`;
-    }
-    function configDetailPage() {
-      const item = config();
-      if (!item) { state.page = 'strategies'; return strategiesPage(); }
-      const linked = state.versions.find(v => v.id === item.versionId);
-      const latest = item.revisions.at(-1);
-      const history = [...item.revisions].reverse().map(r => `<li><strong>修订 ${r.number}</strong><time>${esc(r.time)}</time><p>窗口长度 ${r.values.lookback} · 突破阈值 ${r.values.threshold} · 启用过滤 ${r.values.enabled ? '是' : '否'}</p></li>`).join('');
-      return head(item.name, `${esc(linked?.strategy || '未知策略')} · ${esc(item.versionId)} · ${item.id} · 修订 ${latest.number}`, `<button class="btn" data-action="view-version" data-id="${esc(item.versionId)}">返回代码版本</button><button class="btn primary" data-action="edit-config" data-id="${item.id}">修改参数</button>`) + `<div class="two-col"><section class="card"><h2>当前配置</h2><dl><dt>策略</dt><dd>${esc(linked?.strategy || '未知策略')}</dd><dt>代码版本</dt><dd>${esc(item.versionId)}</dd><dt>窗口长度</dt><dd>${latest.values.lookback}</dd><dt>突破阈值</dt><dd>${latest.values.threshold}</dd><dt>启用过滤</dt><dd>${latest.values.enabled ? '是' : '否'}</dd></dl></section><section class="card"><h2>修订历史</h2><ul class="history">${history}</ul></section></div>`;
+    function uploadPage(mode) {
+      const existing = mode === 'version';
+      const owner = strategy();
+      return head(existing ? '上传新代码版本' : '上传新策略',
+        existing ? `归属：${owner.name} · ${owner.id}` : '上传后创建策略及首个代码版本',
+        button(existing ? '返回策略详情' : '返回策略列表', existing ? 'version-page' : 'strategies')) +
+        `<section class="card" style="max-width:700px"><form id="upload-form"><div class="field"><label for="package-file">Python 策略包（ZIP） <em>*</em></label><input id="package-file" name="package" type="file" accept=".zip,application/zip"><p class="hint">策略名称及参数定义从包内读取；文件名不决定归属。</p><p class="field-error" id="package-error"></p></div><div class="actions"><button class="btn primary" type="submit">上传并校验</button></div></form></section>`;
     }
     function render() {
-      document.querySelectorAll('[data-nav]').forEach(b => { b.classList.add('active'); b.setAttribute('aria-current', 'page'); });
-      const views = { strategies: strategiesPage, upload: uploadPage, version: versionPage, 'config-form': configFormPage, 'config-detail': configDetailPage };
+      document.querySelectorAll('[data-nav]').forEach(nav => { nav.classList.add('active'); nav.setAttribute('aria-current', 'page'); });
+      const views = {
+        strategies: strategiesPage,
+        version: versionPage,
+        'upload-new': () => uploadPage('new'),
+        'upload-version': () => uploadPage('version')
+      };
+      state.page = views[state.page] ? state.page : 'strategies';
       main.innerHTML = (state.message ? `<div class="message ${state.message.type}" role="status">${esc(state.message.text)}</div>` : '') + views[state.page]();
-      if (state.page === 'upload') document.getElementById('upload-form').addEventListener('submit', uploadPackage);
-      if (state.page === 'config-form') document.getElementById('config-form').addEventListener('submit', saveConfig);
+      const form = document.getElementById('upload-form');
+      if (form) form.addEventListener('submit', uploadPackage);
     }
+    function go(page) { state.page = page; state.message = null; render(); window.scrollTo(0, 0); }
     async function uploadPackage(event) {
       event.preventDefault();
       const file = event.currentTarget.elements.package.files[0];
-      if (!file || !file.size) { document.getElementById('package-error').textContent = '请选择有效的策略包文件。'; return; }
-      const bytes = await file.arrayBuffer();
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const error = document.getElementById('package-error');
+      if (!file || !file.size || !file.name.toLowerCase().endsWith('.zip')) {
+        error.textContent = '请选择有效的 ZIP 策略包。';
+        return;
+      }
+      const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
       const checksum = [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join('');
-      const existing = state.versions.find(v => v.checksum === checksum);
-      if (existing) { state.selectedVersionId = existing.id; state.page = 'version'; return show(`相同内容已上传，对应 ${existing.id}。`); }
-      const item = { id: 'V' + String(Math.max(0, ...state.versions.map(v => Number(v.id.slice(1)) || 0)) + 1).padStart(3, '0'), strategy: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ') || '新策略', file: file.name, time: stamp(), checksum: checksum.slice(0, 8), parameters };
-      state.versions.push(item); state.selectedVersionId = item.id; state.page = 'version'; show(`策略包已上传，生成版本 ${item.id}。`, 'success');
+      const owner = strategy();
+      const duplicate = state.versions.find(item => item.strategyId === owner?.id && item.checksum === checksum);
+      if (duplicate) {
+        state.selectedVersionId = duplicate.id;
+        state.page = 'version';
+        state.message = { type: 'info', text: '相同代码包已上传，已打开已有版本。' };
+        return render();
+      }
+      // 交互原型只模拟上传反馈；实际产品从 ZIP 清单读取名称和参数定义。
+      if (state.page === 'upload-new') {
+        const id = 'S' + String(state.strategies.length + 1).padStart(3, '0');
+        state.strategies.push({ id, name: '新上传策略', description: '从策略包读取的说明' });
+        state.selectedStrategyId = id;
+      }
+      const id = 'V' + String(state.versions.length + 1).padStart(3, '0');
+      state.versions.push({ id, strategyId: state.selectedStrategyId, file: file.name, time: stamp(), checksum, parameters: [] });
+      state.selectedVersionId = id;
+      state.page = 'version';
+      state.message = { type: 'success', text: '已导入，未运行验证。' };
+      render();
     }
-    function saveConfig(event) {
-      event.preventDefault(); const form = event.currentTarget;
-      for (const name of ['name','lookback','threshold']) document.getElementById(name + '-error').textContent = '';
-      const name = form.elements.name.value.trim(), lookbackRaw = form.elements.lookback.value.trim(), thresholdRaw = form.elements.threshold.value.trim();
-      const lookback = Number(lookbackRaw), threshold = Number(thresholdRaw); let valid = true;
-      if (!name) { document.getElementById('name-error').textContent = '请填写配置名称。'; valid = false; }
-      if (!lookbackRaw || !Number.isInteger(lookback) || lookback < 1 || lookback > 120) { document.getElementById('lookback-error').textContent = '请输入 1～120 的整数。'; valid = false; }
-      if (!thresholdRaw || !Number.isFinite(threshold) || threshold < 0 || threshold > 1) { document.getElementById('threshold-error').textContent = '请输入 0～1 的数字。'; valid = false; }
-      if (!valid) return;
-      const editing = state.configs.find(c => c.id === state.editingConfigId);
-      const values = { lookback, threshold, enabled: form.elements.enabled.value === 'true' };
-      if (editing) { editing.name = name; editing.revisions.push({ number: editing.revisions.length + 1, time: stamp(), values }); state.selectedConfigId = editing.id; state.editingConfigId = null; }
-      else { const item = { id: 'C' + String(Math.max(0, ...state.configs.map(c => Number(c.id.slice(1)) || 0)) + 1).padStart(3, '0'), name, versionId: state.selectedVersionId, revisions: [{ number: 1, time: stamp(), values }] }; state.configs.push(item); state.selectedConfigId = item.id; }
-      state.page = 'config-detail'; show('配置已保存。', 'success');
-    }
-    document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => go(b.dataset.nav)));
+    document.querySelectorAll('[data-nav]').forEach(nav => nav.addEventListener('click', () => go('strategies')));
     document.addEventListener('click', event => {
-      const button = event.target.closest('[data-action]'); if (!button) return;
-      const action = button.dataset.action, id = button.dataset.id;
-      if (action === 'strategies-page') go('strategies');
-      else if (action === 'upload-page') go('upload');
-      else if (action === 'view-version') { state.selectedVersionId = id; go('version'); }
-      else if (action === 'new-config') { state.selectedVersionId = id; state.editingConfigId = null; go('config-form'); }
-      else if (action === 'view-config') { state.selectedConfigId = id; state.selectedVersionId = config()?.versionId; go('config-detail'); }
-      else if (action === 'edit-config') { state.editingConfigId = id; state.selectedVersionId = state.configs.find(c => c.id === id)?.versionId; go('config-form'); }
+      const target = event.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.dataset.action;
+      if (action === 'strategies') go('strategies');
+      else if (action === 'upload-new') go('upload-new');
+      else if (action === 'upload-version') go('upload-version');
+      else if (action === 'version-page') go('version');
+      else if (action === 'open-strategy') {
+        state.selectedStrategyId = target.dataset.id;
+        state.selectedVersionId = versionsFor(state.selectedStrategyId).at(-1)?.id;
+        go('version');
+      } else if (action === 'view-version') {
+        state.selectedVersionId = target.dataset.id;
+        go('version');
+      } else if (action === 'download-package') {
+        state.message = { type: 'info', text: '原始代码包下载入口。' };
+        render();
+      }
     });
     render();
   </script>

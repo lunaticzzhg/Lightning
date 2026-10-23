@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "interface_version": 1,
+  "name": "无效市场示例",
+  "description": "此包应被拒绝",
+  "markets": ["CRYPTO"],
+  "bar_interval": "1m",
+  "required_fields": ["close"],
+  "entrypoint": "strategy:on_bar",
+  "python": "3.13",
+  "dependencies": [],
+  "parameters": []
+}
