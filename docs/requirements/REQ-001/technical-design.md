@@ -15,7 +15,7 @@
                               静态校验 ZIP 与参数定义
 ```
 
-职责按入口、业务、存储分开：`web/` 展示策略、版本和参数定义；`backend/features/strategies/` 决定上传、归属和去重；`backend/infra/` 连接 MySQL；`contracts/http/` 定义管理接口；`contracts/strategy/` 定义策略包和未来运行接口；`deploy/local/` 与 `scripts/` 负责启动、备份和恢复。不为回测、模拟或交易预建模块。
+职责按入口、业务、存储分开：`web/` 展示策略、版本和参数定义；`backend/features/strategies/` 决定上传、归属和去重；`backend/infra/` 连接 MySQL；FastAPI 路由定义管理接口并生成 OpenAPI；`backend/features/strategies/manifest.py` 定义策略包清单，`contracts/strategy/` 保存由模型导出的 JSON Schema 与未来运行接口；`deploy/local/` 与 `scripts/` 负责启动、备份和恢复。不为回测、模拟或交易预建模块。
 
 首期沿用 React + TypeScript、FastAPI、MySQL 8.4、Alembic 和 Docker Compose。Web 构建后由应用同源提供；MySQL 保存业务事实。应用端口只发布到 `127.0.0.1`，数据库不发布宿主机端口。Docker 文档说明指定该地址可把发布端口限制在本机访问范围内：[Compose 端口映射](https://docs.docker.com/reference/compose-file/services/)。
 
@@ -35,7 +35,7 @@
 
 上传 ZIP；根目录至少有 `strategy.json` 与 `strategy.py`。`strategy.json` 声明格式版本、未来运行接口版本、名称与说明、市场、分钟周期、所需行情字段、代码入口、Python 环境、依赖和参数定义。市场用 `CN`、`US` 标识；周期以正整数分钟声明。阶段一只验证声明格式与支持范围，不承诺对应行情已经可用。
 
-清单示例（字段与类型以 `contracts/strategy/` 的合同为准）：
+清单示例（字段与类型以清单模型及由它导出的 `contracts/strategy/strategy.schema.json` 为准）：
 
 ```json
 {
@@ -61,7 +61,7 @@
 
 ### 3.2 管理接口
 
-`contracts/http/` 用 OpenAPI 3.1 维护管理协议，并生成前后端的传输模型；路由检查须与合同一致。阶段一只需：
+FastAPI 路由及请求、响应模型是 HTTP 协议唯一来源；生成、调用与检查遵循[项目接口协议规范](../../engineering/api-contract.md)。`scripts/export_openapi.py` 不连接数据库即可导出 OpenAPI。`web/scripts/generate_api_types.mjs` 使用 `openapi-typescript` 生成声明，页面通过 `openapi-fetch` 调用。`npm run check:api --prefix web` 检查生成类型是否与当前后端一致。上传文件类型转换为 `Blob`，由 `bodySerializer` 编码为 `FormData`；下载按 `Blob` 读取原始字节。容器构建先从当前后端导出协议，再生成前端类型和页面。阶段一接口：
 
 | 操作 | 接口 |
 | --- | --- |
@@ -93,9 +93,9 @@
 
 ## 6. 实施顺序与验证计划
 
-1. 定义 `contracts/strategy/` 的清单与运行接口版本、`contracts/http/` 的上述接口；确定样例策略包和无参数策略包。
+1. 定义 `contracts/strategy/` 的清单与运行接口版本、上述管理接口；确定样例策略包和无参数策略包。
 2. 实现 MySQL 初始迁移、静态包校验、策略与版本事务、只读查询和原包下载；再实现 Web 列表、上传和版本详情。
 3. 完成本地 Compose、凭证准备、备份与隔离恢复命令；补充本地运行手册。
-4. 验证合同与路由、异常上传不半写、并发去重、不同版本参数显示、原包下载、重启、离线及备份恢复。实际结果写入[测试报告](./test-report.md)，不能沿用旧方案的结论。
+4. 验证 OpenAPI 可读取、前后端请求、异常上传不半写、并发去重、不同版本参数显示、原包下载、重启、离线及备份恢复。实际结果写入[测试报告](./test-report.md)，不能沿用旧方案的结论。
 
 本次实现按新空库验收。实际结果以测试报告为准。

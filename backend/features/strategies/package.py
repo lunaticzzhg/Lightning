@@ -3,15 +3,11 @@ import ast
 import hashlib
 import io
 import json
-import math
 import stat
 import zipfile
-from pathlib import Path
 
-from jsonschema import Draft202012Validator
-
-SCHEMA = json.loads((Path(__file__).resolve().parents[3] / 'contracts/strategy/strategy.schema.json').read_text())
-VALIDATOR = Draft202012Validator(SCHEMA)
+from pydantic import ValidationError
+from backend.features.strategies.manifest import Manifest
 MAX_ZIP = 10 * 1024 * 1024
 MAX_UNPACKED = 50 * 1024 * 1024
 MAX_FILES = 100
@@ -19,30 +15,6 @@ MAX_FILES = 100
 
 class PackageError(ValueError):
     pass
-
-
-def _validate_default(parameter):
-    if 'default' not in parameter:
-        return
-    value = parameter['default']
-    kind = parameter['type']
-    if kind == 'integer' and (type(value) is not int):
-        raise PackageError(f"参数 {parameter['name']} 的默认值须为整数")
-    if kind == 'number' and (type(value) not in (int, float)):
-        raise PackageError(f"参数 {parameter['name']} 的默认值须为小数")
-    if kind == 'boolean' and type(value) is not bool:
-        raise PackageError(f"参数 {parameter['name']} 的默认值须为布尔值")
-    if kind in ('string', 'enum') and type(value) is not str:
-        raise PackageError(f"参数 {parameter['name']} 的默认值须为文本")
-    if kind == 'enum' and value not in parameter.get('options', []):
-        raise PackageError(f"参数 {parameter['name']} 的默认值不在选项中")
-    if kind in ('integer', 'number'):
-        if not math.isfinite(value):
-            raise PackageError(f"参数 {parameter['name']} 的默认值须为有限数字")
-        if 'min' in parameter and value < parameter['min']:
-            raise PackageError(f"参数 {parameter['name']} 的默认值小于下限")
-        if 'max' in parameter and value > parameter['max']:
-            raise PackageError(f"参数 {parameter['name']} 的默认值大于上限")
 
 
 def validate_package(data: bytes):
@@ -77,29 +49,10 @@ def validate_package(data: bytes):
         if len(raw_manifest) > 256 * 1024:
             raise PackageError('strategy.json 过大')
         manifest = json.loads(raw_manifest.decode('utf-8'), parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
-        problems = sorted(VALIDATOR.iter_errors(manifest), key=lambda e: list(map(str, e.path)))
-        if problems:
-            raise PackageError(f'策略声明无效：{problems[0].message}')
-        if not manifest['name'].strip() or not manifest['description'].strip():
-            raise PackageError('策略名称和说明不能为空')
-        seen = set()
-        for param in manifest['parameters']:
-            name = param['name'].strip()
-            if not name or name.casefold() in seen:
-                raise PackageError('参数名称为空或重复')
-            seen.add(name.casefold())
-            if any(secret in name.casefold() for secret in ('password', 'secret', 'token', 'api_key', 'credential', '密码', '密钥')):
-                raise PackageError('策略参数不能保存密码或密钥')
-            kind = param['type']
-            if kind == 'enum' and (not param.get('options') or any(not option.strip() for option in param['options'])):
-                raise PackageError(f'参数 {name} 缺少有效枚举选项')
-            if kind != 'enum' and 'options' in param:
-                raise PackageError(f'参数 {name} 不应声明枚举选项')
-            if kind not in ('integer', 'number') and ('min' in param or 'max' in param):
-                raise PackageError(f'参数 {name} 不能声明数值范围')
-            if 'min' in param and 'max' in param and param['min'] > param['max']:
-                raise PackageError(f'参数 {name} 的范围无效')
-            _validate_default(param)
+        try:
+            manifest = Manifest.model_validate(manifest).model_dump(exclude_unset=True)
+        except ValidationError as exc:
+            raise PackageError(f'策略声明无效：{exc.errors()[0]["msg"]}') from exc
         tree = ast.parse(archive.read('strategy.py').decode('utf-8'), filename='strategy.py')
         entry = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'on_bar'), None)
         args = (entry.args.posonlyargs + entry.args.args) if entry else []

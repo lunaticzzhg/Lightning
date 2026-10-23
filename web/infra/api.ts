@@ -1,23 +1,50 @@
-import type { Strategy, StrategyDetail, Version, VersionDetail, Status } from './transport'
+import createClient from 'openapi-fetch'
+import type { paths } from './openapi'
+
+const client = createClient<paths>()
 let token = ''
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers)
-  if (init.method === 'POST') headers.set('X-Lightning-Token', token)
-  const response = await fetch(path, { ...init, headers })
-  if (!response.ok) {
-    let text = `请求失败（${response.status}）`
-    try { const body = await response.json() as { message?: string }; text = body.message || text } catch { /* non-JSON failure */ }
-    throw new Error(text)
+
+async function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): Promise<T> {
+  if (result.response.ok && result.data !== undefined) return result.data
+  let error = result.error
+  if (error instanceof Blob) {
+    try { error = JSON.parse(await error.text()) } catch { /* non-JSON response */ }
   }
-  return response.json() as Promise<T>
+  const message = typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+    ? error.message : `请求失败（${result.response.status}）`
+  throw new Error(message)
 }
-export async function connect(): Promise<void> { token = (await request<Status>('/api/status')).token }
+
+const multipart = (body: { file: Blob }) => {
+  const form = new FormData()
+  form.append('file', body.file)
+  return form
+}
+
+export async function connect(): Promise<void> {
+  const result = await client.GET('/api/status')
+  token = (await unwrap(result)).token
+}
+
 export const api = {
-  list: () => request<Strategy[]>('/api/strategies'),
-  strategy: (id: string) => request<StrategyDetail>(`/api/strategies/${encodeURIComponent(id)}`),
-  version: (id: string) => request<VersionDetail>(`/api/versions/${encodeURIComponent(id)}`),
-  upload: (file: File, strategyId?: string) => {
-    const form = new FormData(); form.append('file', file)
-    return request<Version>(strategyId ? `/api/strategies/${encodeURIComponent(strategyId)}/versions` : '/api/strategies', { method: 'POST', body: form })
+  list: async () => unwrap(await client.GET('/api/strategies')),
+  strategy: async (id: string) => unwrap(await client.GET('/api/strategies/{strategy_id}', { params: { path: { strategy_id: id } } })),
+  version: async (id: string) => unwrap(await client.GET('/api/versions/{version_id}', { params: { path: { version_id: id } } })),
+  upload: async (file: File, strategyId?: string) => {
+    const options = { params: { header: { 'X-Lightning-Token': token } }, body: { file }, bodySerializer: multipart }
+    return strategyId
+      ? unwrap(await client.POST('/api/strategies/{strategy_id}/versions', { ...options, params: { ...options.params, path: { strategy_id: strategyId } } }))
+      : unwrap(await client.POST('/api/strategies', options))
+  },
+  download: async (id: string) => {
+    const result = await client.GET('/api/versions/{version_id}/download', { params: { path: { version_id: id } }, parseAs: 'blob' })
+    const blob = await unwrap(result)
+    const disposition = result.response.headers.get('content-disposition') ?? ''
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+    let fileName = 'strategy.zip'
+    if (encoded) {
+      try { fileName = decodeURIComponent(encoded) } catch { /* malformed filename */ }
+    }
+    return { blob, fileName }
   },
 }

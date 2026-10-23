@@ -2,11 +2,16 @@ import io
 import json
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+from jsonschema import Draft202012Validator
+import pytest
 from sqlalchemy import create_engine, func, select
 
 from backend.app.api import create_app
+from backend.features.strategies.manifest import Manifest
+from backend.features.strategies.package import PackageError, validate_package
 from backend.infra.database import ensure_schema, strategies, versions
 
 
@@ -39,6 +44,34 @@ def upload(test, data, url='/api/strategies'):
     return test.post(url, files={'file': ('example.zip', data, 'application/zip')})
 
 
+def test_published_manifest_schema_matches_runtime_contract():
+    path = Path(__file__).resolve().parents[1] / 'contracts/strategy/strategy.schema.json'
+    published = json.loads(path.read_text())
+    assert published == Manifest.model_json_schema()
+    validator = Draft202012Validator(published)
+    properties = published['properties']
+    for name in ('markets', 'required_fields', 'dependencies'):
+        assert properties[name]['uniqueItems'] is True
+    assert properties['dependencies']['items']['minLength'] == 1
+    assert properties['dependencies']['items']['maxLength'] == 200
+    assert published['$defs']['EnumParameter']['properties']['options']['uniqueItems'] is True
+    assert published['$defs']['EnumParameter']['properties']['options']['items']['minLength'] == 1
+
+    valid = json.loads(zipfile.ZipFile(io.BytesIO(package())).read('strategy.json'))
+    for kind in ('integer', 'number', 'boolean', 'string', 'enum'):
+        fields = ('default', 'min', 'max') if kind in ('integer', 'number') else ('default',)
+        for field in fields:
+            invalid = json.loads(json.dumps(valid))
+            parameter = {'name': 'x', 'type': kind, 'required': True, field: None}
+            if kind == 'enum':
+                parameter['options'] = ['choice']
+            invalid['parameters'] = [parameter]
+            assert not validator.is_valid(invalid), (kind, field)
+            with pytest.raises(PackageError):
+                validate_package(package(parameters=invalid['parameters']))
+    assert validator.is_valid(valid)
+
+
 def test_versions_and_download(tmp_path):
     test, engine = client(tmp_path)
     original = package()
@@ -53,7 +86,12 @@ def test_versions_and_download(tmp_path):
     assert upload(test, package(' 示例策略 ')).status_code == 409
     second = upload(test, package(source='def on_bar(event):\n    return []\n', parameters=[]), f'/api/strategies/{sid}/versions').json()
     assert second['number'] == 2
-    assert test.get(f"/api/versions/{first['id']}/download").content == original
+    download = test.get(f"/api/versions/{first['id']}/download")
+    assert download.content == original
+    assert download.headers['content-type'] == 'application/octet-stream'
+    assert 'example.zip' in download.headers['content-disposition']
+    missing = test.get('/api/versions/missing/download')
+    assert missing.status_code == 404 and missing.json()['code'] == 'not_found'
     assert test.get(f"/api/versions/{first['id']}").json()['version']['manifest']['parameters'][0]['name'] == 'window'
     assert test.get(f"/api/versions/{second['id']}").json()['version']['manifest']['parameters'] == []
     assert test.get(f'/api/strategies/{sid}').json()['versions'][0]['id'] == second['id']
@@ -94,6 +132,20 @@ def test_concurrent_duplicate(tmp_path):
 
 def test_guard_and_database_failure(tmp_path):
     test, _ = client(tmp_path)
+    schema = test.get('/api/openapi.json')
+    assert schema.status_code == 200
+    assert '/api/strategies/{strategy_id}/versions' in schema.json()['paths']
+    paths = schema.json()['paths']
+    manifest = schema.json()['components']['schemas']['Manifest']
+    assert manifest['properties']['parameters']['items']['discriminator']['propertyName'] == 'type'
+    assert manifest['properties']['markets']['items']['enum'] == ['CN', 'US']
+    for path in ('/api/strategies', '/api/strategies/{strategy_id}/versions'):
+        operation = paths[path]['post']
+        assert any(p['name'] == 'X-Lightning-Token' and p['in'] == 'header' and p['required'] for p in operation['parameters'])
+        assert operation['requestBody']['content']['multipart/form-data']['schema']
+        assert operation['responses']['403']['content']['application/json']['schema']['$ref'].endswith('/Error')
+    binary = paths['/api/versions/{version_id}/download']['get']['responses']['200']['content']['application/octet-stream']['schema']
+    assert binary == {'type': 'string', 'format': 'binary'}
     assert upload(test, package()).status_code == 201
     assert test.post('/api/strategies', files={'file': ('x.zip', package())}, headers={'X-Lightning-Token': 'wrong'}).status_code == 403
     assert test.post('/api/strategies', files={'file': ('x.zip', package())}, headers={'Origin': 'https://evil.example'}).status_code == 403

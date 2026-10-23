@@ -1,8 +1,293 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Lightning strategy manifest v1",
-  "type": "object",
+  "$defs": {
+    "BooleanParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "title": "Default",
+          "type": "boolean"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "boolean",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "type"
+      ],
+      "title": "BooleanParameter",
+      "type": "object"
+    },
+    "EnumParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "title": "Default",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Options",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "enum",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "type",
+        "options"
+      ],
+      "title": "EnumParameter",
+      "type": "object"
+    },
+    "IntegerParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "title": "Default",
+          "type": "integer"
+        },
+        "max": {
+          "title": "Max",
+          "type": "number"
+        },
+        "min": {
+          "title": "Min",
+          "type": "number"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "integer",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "type"
+      ],
+      "title": "IntegerParameter",
+      "type": "object"
+    },
+    "NumberParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "title": "Default",
+          "type": "number"
+        },
+        "max": {
+          "title": "Max",
+          "type": "number"
+        },
+        "min": {
+          "title": "Min",
+          "type": "number"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "number",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "type"
+      ],
+      "title": "NumberParameter",
+      "type": "object"
+    },
+    "StringParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "title": "Default",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "string",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "type"
+      ],
+      "title": "StringParameter",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
+  "properties": {
+    "bar_interval": {
+      "pattern": "^[1-9][0-9]*m$",
+      "title": "Bar Interval",
+      "type": "string"
+    },
+    "dependencies": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Dependencies",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "entrypoint": {
+      "const": "strategy:on_bar",
+      "title": "Entrypoint",
+      "type": "string"
+    },
+    "interface_version": {
+      "const": 1,
+      "title": "Interface Version",
+      "type": "integer"
+    },
+    "markets": {
+      "items": {
+        "enum": [
+          "CN",
+          "US"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Markets",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "parameters": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "boolean": "#/$defs/BooleanParameter",
+            "enum": "#/$defs/EnumParameter",
+            "integer": "#/$defs/IntegerParameter",
+            "number": "#/$defs/NumberParameter",
+            "string": "#/$defs/StringParameter"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/IntegerParameter"
+          },
+          {
+            "$ref": "#/$defs/NumberParameter"
+          },
+          {
+            "$ref": "#/$defs/BooleanParameter"
+          },
+          {
+            "$ref": "#/$defs/StringParameter"
+          },
+          {
+            "$ref": "#/$defs/EnumParameter"
+          }
+        ]
+      },
+      "title": "Parameters",
+      "type": "array"
+    },
+    "python": {
+      "const": "3.13",
+      "title": "Python",
+      "type": "string"
+    },
+    "required_fields": {
+      "items": {
+        "enum": [
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Fields",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
   "required": [
     "schema_version",
     "interface_version",
@@ -16,114 +301,6 @@
     "dependencies",
     "parameters"
   ],
-  "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "interface_version": {
-      "const": 1
-    },
-    "name": {
-      "type": "string",
-      "minLength": 1
-    },
-    "description": {
-      "type": "string",
-      "minLength": 1
-    },
-    "markets": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "CN",
-          "US"
-        ]
-      }
-    },
-    "bar_interval": {
-      "type": "string",
-      "pattern": "^[1-9][0-9]*m$"
-    },
-    "required_fields": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "open",
-          "high",
-          "low",
-          "close",
-          "volume"
-        ]
-      }
-    },
-    "entrypoint": {
-      "const": "strategy:on_bar"
-    },
-    "python": {
-      "const": "3.13"
-    },
-    "dependencies": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 200
-      }
-    },
-    "parameters": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/parameter"
-      }
-    }
-  },
-  "$defs": {
-    "parameter": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "type",
-        "required"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "type": {
-          "enum": [
-            "integer",
-            "number",
-            "boolean",
-            "string",
-            "enum"
-          ]
-        },
-        "required": {
-          "type": "boolean"
-        },
-        "default": {},
-        "min": {
-          "type": "number"
-        },
-        "max": {
-          "type": "number"
-        },
-        "options": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
-        }
-      }
-    }
-  }
+  "title": "Manifest",
+  "type": "object"
 }

@@ -5,7 +5,7 @@ import secrets
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import FastAPI, File, Request, UploadFile
+from fastapi import FastAPI, File, Header, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -26,7 +26,7 @@ def error_response(code, message, status):
 
 def create_app(engine: Engine, static_dir: Path | None = None):
     token = secrets.token_urlsafe(32)
-    app = FastAPI(title='Lightning management API', version='1.0.0', docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title='Lightning management API', version='1.0.0', docs_url=None, redoc_url=None, openapi_url='/api/openapi.json')
     app.state.token = token
 
     allowed_hosts = {host.strip().lower() for host in os.environ.get('LIGHTNING_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',') if host.strip()}
@@ -88,19 +88,19 @@ def create_app(engine: Engine, static_dir: Path | None = None):
     def list_strategies():
         return service.list_strategies(engine)
 
-    @app.post('/api/strategies', response_model=Version, status_code=201, operation_id='create_strategy', responses=ERROR_RESPONSES)
-    async def create_strategy(file: UploadFile = File(...)):
+    @app.post('/api/strategies', response_model=Version, response_model_exclude_unset=True, status_code=201, operation_id='create_strategy', responses=ERROR_RESPONSES)
+    async def create_strategy(file: UploadFile = File(...), _token: str = Header(alias="X-Lightning-Token")):
         return service.upload(engine, file.filename or '', await package_bytes(file))
 
-    @app.get('/api/strategies/{strategy_id}', response_model=StrategyDetail, operation_id='get_strategy', responses=ERROR_RESPONSES)
+    @app.get('/api/strategies/{strategy_id}', response_model=StrategyDetail, response_model_exclude_unset=True, operation_id='get_strategy', responses=ERROR_RESPONSES)
     def get_strategy(strategy_id: str):
         return service.get_strategy(engine, strategy_id)
 
-    @app.post('/api/strategies/{strategy_id}/versions', response_model=Version, status_code=201, operation_id='upload_version', responses=ERROR_RESPONSES)
-    async def upload_version(strategy_id: str, file: UploadFile = File(...)):
+    @app.post('/api/strategies/{strategy_id}/versions', response_model=Version, response_model_exclude_unset=True, status_code=201, operation_id='upload_version', responses=ERROR_RESPONSES)
+    async def upload_version(strategy_id: str, file: UploadFile = File(...), _token: str = Header(alias="X-Lightning-Token")):
         return service.upload(engine, file.filename or '', await package_bytes(file), strategy_id)
 
-    @app.get('/api/versions/{version_id}', response_model=VersionDetail, operation_id='get_version', responses=ERROR_RESPONSES)
+    @app.get('/api/versions/{version_id}', response_model=VersionDetail, response_model_exclude_unset=True, operation_id='get_version', responses=ERROR_RESPONSES)
     def get_version(version_id: str):
         return service.get_version(engine, version_id)
 
