@@ -1,2 +1,36 @@
-.marketSearch{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.marketSearch label{min-width:150px;flex:1;margin:0}.marketSearch button{margin-bottom:0}.marketSearch select,select{display:block;width:100%;min-height:40px;border:1px solid #b8c9d2;border-radius:7px;padding:8px;background:#fff}.marketResult{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e5ecef;padding:16px 0;gap:12px}.marketResult p{font-size:13px;color:#6c808a;margin:6px 0}.marketEmpty{padding:25px;color:#6c808a}.marketEmpty button{margin-left:12px}.marketChartScroll{overflow:auto}.marketValues{display:flex;gap:20px;flex-wrap:wrap;padding:12px;background:#f5f8f8;border-radius:8px}.marketValues span{font-variant-numeric:tabular-nums}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #dce5e9;text-align:left;padding:9px;overflow-wrap:anywhere}summary{cursor:pointer;font-weight:650}@media(max-width:600px){.marketResult{align-items:stretch;flex-direction:column}.marketValues{display:block}.marketValues span{display:block;margin-top:8px}}
-.marketWarning{color:#935b13;font-weight:650}
+.marketSearch{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.marketSearch label{min-width:150px;flex:1;margin:0}
+.marketSearch button{margin-bottom:0}
+.marketSearch select,select{display:block;width:100%;min-height:40px;border:1px solid #b8c9d2;border-radius:7px;padding:8px;background:#fff}
+.marketResult{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e5ecef;padding:16px 0;gap:12px}
+.marketResult p{font-size:13px;color:#6c808a;margin:6px 0}
+.marketEmpty{padding:25px;color:#6c808a}
+.marketEmpty button{margin-left:12px}
+.marketChart{min-width:0}
+.marketChartReadout{min-height:42px;margin:8px 0;font-size:13px;line-height:1.5;font-variant-numeric:tabular-nums}
+.marketChartReadout strong{margin-right:13px}
+.marketWarning{display:block;color:#935b13}
+.marketChartWarningSummary{margin:4px 0 8px;color:#935b13;font-size:13px}
+.marketChartFrame{border:1px solid #e0e9ec;border-radius:9px;background:#fff}
+.marketChartFrame svg{display:block;width:100%}
+.marketChartAxis{fill:#6c808a;font-size:11px}
+.marketChartPoint{cursor:pointer}
+.marketChartPoint:focus-visible{outline:3px solid #0b786e;outline-offset:-3px}
+.marketChartRange{margin-top:14px}
+.marketRangeTrack{height:25px;position:relative;touch-action:none;cursor:pointer}
+.marketRangeTrack::before{content:'';position:absolute;top:9px;left:0;right:0;height:8px;border-radius:5px;background:#e3ecef}
+.marketRangeWindow{position:absolute;top:4px;height:18px;border:2px solid #0b786e;border-radius:5px;background:#bfe2dc;cursor:grab;touch-action:none}
+.marketRangeWindow:active{cursor:grabbing}
+.marketRangeHandle{position:absolute;top:-4px;width:12px;height:22px;border-radius:4px;background:#0b786e;cursor:ew-resize;touch-action:none}
+.marketRangeHandle.start{left:-6px}
+.marketRangeHandle.end{right:-6px}
+.marketRangeWindow:focus-visible,.marketRangeHandle:focus-visible{outline:3px solid #82c8c0;outline-offset:3px}
+.marketRangeDates{display:flex;justify-content:space-between;color:#6c808a;font-size:12px}
+.marketChartLegend{margin:8px 0 0;color:#647b86;font-size:12px}
+.marketChartLegend i{display:inline-block;width:10px;height:10px;margin:0 4px 0 12px;border-radius:2px}
+.marketChartLegend i:first-child{margin-left:0}
+.marketChartLegend i.missing{background:#f8fafb;border:1px dashed #b8c9d2}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid #dce5e9;text-align:left;padding:9px;overflow-wrap:anywhere}
+summary{cursor:pointer;font-weight:650}
+@media(max-width:600px){.marketResult{align-items:stretch;flex-direction:column}.marketChartReadout strong{display:block}.marketRangeDates{font-size:11px}}

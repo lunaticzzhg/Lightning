@@ -85,12 +85,25 @@
     .number { font-variant-numeric: tabular-nums; }
     .chart-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; margin-bottom: 15px; }
     .chart-toolbar .field { min-width: 190px; margin: 0; }
-    .chart-wrap { overflow-x: auto; border: 1px solid #e0e9ec; border-radius: 9px; background: #fff; }
-    .chart-wrap svg { display: block; width: 100%; min-width: 660px; }
+    .chart-wrap { border: 1px solid #e0e9ec; border-radius: 9px; background: #fff; }
+    .chart-wrap svg { display: block; width: 100%; }
     .chart-point { cursor: pointer; }
     .chart-point:focus-visible { outline: 3px solid #0b786e; outline-offset: -3px; }
-    .chart-detail { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: #f5f8f9; font-size: 13px; line-height: 1.6; }
-    .chart-detail strong { display: block; margin-bottom: 3px; }
+    .chart-point.is-active .candle-body { stroke: #193044; stroke-width: 2; }
+    .chart-point.is-active .empty-slot { fill: #e7eef1; }
+    .chart-readout { min-height: 42px; margin: 7px 0 8px; font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+    .chart-readout strong { margin-right: 13px; }
+    .chart-readout .market-warning { display: block; color: #935b13; }
+    .chart-range { margin-top: 14px; }
+    .range-track { height: 25px; position: relative; touch-action: none; cursor: pointer; }
+    .range-track::before { content: ''; position: absolute; top: 9px; left: 0; right: 0; height: 8px; border-radius: 5px; background: #e3ecef; }
+    .range-window { position: absolute; top: 4px; height: 18px; border: 2px solid #0b786e; border-radius: 5px; background: #bfe2dc; cursor: grab; touch-action: none; }
+    .range-window:active { cursor: grabbing; }
+    .range-handle { position: absolute; top: -4px; width: 12px; height: 22px; border-radius: 4px; background: #0b786e; cursor: ew-resize; touch-action: none; }
+    .range-handle.start { left: -6px; }
+    .range-handle.end { right: -6px; }
+    .range-window:focus-visible, .range-handle:focus-visible { outline: 3px solid #82c8c0; outline-offset: 3px; }
+    .range-dates { display: flex; justify-content: space-between; color: #6c808a; font-size: 12px; }
     .status-line { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 14px 0; font-size: 13px; }
     .status-line span { white-space: nowrap; }
     .status-line .warn { color: #935b13; font-weight: 650; }
@@ -132,7 +145,10 @@
     // 只演示页面交互。示例数据和上传结果保存在当前浏览器页面内。
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const qs = new URLSearchParams(location.search);
-    const demoDays = ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
+    const rangeDemo = qs.get('demo') === 'range';
+    const demoDays = rangeDemo
+      ? Array.from({ length: 115 }, (_, i) => { const d = new Date('2026-07-01T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10); }).filter(day => ![0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay()) && (day < '2026-10-01' || day > '2026-10-07'))
+      : ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
     const bar = (symbol, exchange, time, values, batch) => ({ symbol, exchange, time, values, batch });
     const batches = {
       B001: { file: 'a_daily_20_21.csv', imported: '2026-10-21 18:00', checksum: 'a4168c21' },
@@ -163,8 +179,18 @@
         { id: 'V001', created: '2026-10-22 18:00', basedOn: '首次导入', rows: [bar('AAPL', 'NASDAQ', '2026-10-20', [250, 254, 248, 252, 1800000], 'B005')], issues: [] }
       ] }
     ];
-    const initialFilters = { market: 'A 股', interval: '日线', symbol: '600519', from: '2026-10-20', to: '2026-10-23' };
-    const state = { datasets: qs.has('empty') ? [] : seed, page: 'list', filters: initialFilters, searchDirty: false, selectedId: 'D001', selectedVersion: 'V002', chartDay: null, chartOffset: 0, chartSelection: null, chartSegment: null, reviewPage: 0, uploadTarget: null, pending: null, result: null, message: null };
+    if (rangeDemo) {
+      batches.B006 = { file: 'range_demo.csv', imported: '2026-10-23 18:00', checksum: 'demo' };
+      const existing = new Set(seed[0].versions[1].rows.map(r => r.time));
+      seed[0].versions[1].rows.push(...demoDays.filter(day => !existing.has(day)).map((day, i) => {
+        const open = 1600 + i * 1.15 + Math.sin(i / 5) * 18;
+        return bar('600519', 'SH', day, [open, open + 12, open - 9, open + Math.sin(i) * 7, 220000 + i * 1100].map((value, index) => index < 4 ? Number(value.toFixed(2)) : value), 'B006');
+      }));
+    }
+    const initialFilters = { market: 'A 股', interval: '日线', symbol: '600519', from: rangeDemo ? demoDays[0] : '2026-10-20', to: '2026-10-23' };
+    const state = { datasets: qs.has('empty') ? [] : seed, page: 'list', filters: initialFilters, searchDirty: false, selectedId: 'D001', selectedVersion: 'V002', chartDay: null, chartWindow: null, chartSelection: null, chartHover: null, chartContext: null, chartSegment: null, reviewPage: 0, uploadTarget: null, pending: null, result: null, message: null };
+    let rangeDrag = null;
+    const resetChartView = () => { state.chartWindow = null; state.chartSelection = null; state.chartHover = null; };
     const main = document.getElementById('main');
     const selectedDataset = () => state.datasets.find(d => d.id === state.selectedId);
     const latest = d => d.versions.at(-1);
@@ -213,9 +239,14 @@
     function candleChart(c, f, issues) {
       const slots = c.unknown ? c.rows.map(r => r.time).sort() : c.slots;
       if (!slots.length) return '<div class="message info">所选范围没有保存的行情。可换个日期或导入文件。</div>';
-      const pageSize = 48;
-      state.chartOffset = Math.min(state.chartOffset, Math.max(0, Math.ceil(slots.length / pageSize) - 1));
-      const start = state.chartOffset * pageSize, visible = slots.slice(start, start + pageSize);
+      const width = Math.max(320, Math.min(980, main.clientWidth - (window.innerWidth > 800 ? 124 : 84)));
+      const maxVisible = Math.max(12, Math.min(60, Math.floor((width - 90) / 12)));
+      const minVisible = Math.min(8, slots.length);
+      if (!state.chartWindow) state.chartWindow = { start: Math.max(0, slots.length - maxVisible), count: Math.min(slots.length, maxVisible) };
+      state.chartWindow.count = Math.min(slots.length, Math.max(minVisible, Math.min(maxVisible, state.chartWindow.count)));
+      state.chartWindow.start = Math.max(0, Math.min(slots.length - state.chartWindow.count, state.chartWindow.start));
+      const { start, count } = state.chartWindow;
+      const visible = slots.slice(start, start + count);
       const rows = new Map(c.rows.map(r => [r.time, r]));
       const chartRows = visible.map(s => rows.get(s)).filter(Boolean);
       const prices = chartRows.flatMap(r => r.values.slice(0, 4));
@@ -223,32 +254,43 @@
       const pad = Math.max((high - low) * .12, high * .004, 1);
       const min = Number.isFinite(low) ? low - pad : 0, max = Number.isFinite(high) ? high + pad : 1;
       const maxVolume = Math.max(1, ...chartRows.map(r => r.values[4]));
-      const width = Math.max(660, visible.length * 23 + 96), left = 58, right = width - 22, step = (right - left) / visible.length;
+      const left = 58, right = width - 22, step = (right - left) / visible.length;
       const priceY = n => 32 + (max - n) / (max - min) * 195;
       const volumeY = n => 310 - n / maxVolume * 60;
       const up = f.market === 'A 股' ? '#cf5546' : '#188b68', down = f.market === 'A 股' ? '#188b68' : '#cf5546';
+      if (!visible.includes(state.chartSelection)) state.chartSelection = null;
+      const defaultSlot = [...visible].reverse().find(s => rows.has(s)) || visible.at(-1);
+      state.chartContext = { visible, rows, issues, defaultSlot, slots, maxVisible, minVisible };
       const marks = visible.map((slot, index) => {
-        const x = left + step * (index + .5), r = rows.get(slot), selected = state.chartSelection === slot;
+        const x = left + step * (index + .5), r = rows.get(slot);
         const label = f.interval === '日线' ? slot.slice(5) : slot.slice(11);
         const showLabel = visible.length <= 12 || index % Math.ceil(visible.length / 10) === 0 || index === visible.length - 1;
         const issue = issues.some(i => i.time === slot);
         const axis = showLabel ? `<text x="${x}" y="338" text-anchor="middle" fill="#6c808a" font-size="11">${esc(label)}</text>` : '';
-        if (!r) return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 无行情" data-action="chart-point" data-id="${esc(slot)}"><rect x="${x - step * .36}" y="30" width="${step * .72}" height="280" fill="${selected ? '#e7eef1' : '#f8fafb'}" stroke="#b8c9d2" stroke-dasharray="3 3"/>${axis}<title>${esc(slot)}：无行情</title></g>`;
+        if (!r) return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 无行情" data-action="chart-point" data-id="${esc(slot)}" data-x="${x}"><rect class="empty-slot" x="${x - step * .36}" y="30" width="${step * .72}" height="280" fill="#f8fafb" stroke="#b8c9d2" stroke-dasharray="3 3"/>${axis}<title>${esc(slot)}：无行情</title></g>`;
         const [open, hi, lo, close, volume] = r.values, color = close >= open ? up : down;
         const top = Math.min(priceY(open), priceY(close)), bodyHeight = Math.max(3, Math.abs(priceY(open) - priceY(close)));
-        return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 开盘${open} 收盘${close} 成交量${volume}${issue ? ' 有数据异常提示' : ''}" data-action="chart-point" data-id="${esc(slot)}"><line x1="${x}" y1="${priceY(hi)}" x2="${x}" y2="${priceY(lo)}" stroke="${color}" stroke-width="2"/><rect x="${x - Math.min(8, step * .28)}" y="${top}" width="${Math.min(16, step * .56)}" height="${bodyHeight}" fill="${color}" stroke="${selected ? '#193044' : color}" stroke-width="${selected ? 2 : 1}"/><rect x="${x - Math.min(8, step * .28)}" y="${volumeY(volume)}" width="${Math.min(16, step * .56)}" height="${310 - volumeY(volume)}" fill="${color}" opacity=".68"/>${issue ? `<circle cx="${x}" cy="18" r="6" fill="#df9a36"/>` : ''}${axis}<rect x="${x - step * .36}" y="10" width="${step * .72}" height="300" fill="transparent"/><title>${esc(slot)}：开${open} 高${hi} 低${lo} 收${close} 量${volume}${issue ? '；有数据异常提示' : ''}</title></g>`;
+        return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 开盘${open} 收盘${close} 成交量${volume}${issue ? ' 有数据异常提示' : ''}" data-action="chart-point" data-id="${esc(slot)}" data-x="${x}"><line x1="${x}" y1="${priceY(hi)}" x2="${x}" y2="${priceY(lo)}" stroke="${color}" stroke-width="2"/><rect class="candle-body" x="${x - Math.min(8, step * .28)}" y="${top}" width="${Math.min(16, step * .56)}" height="${bodyHeight}" fill="${color}" stroke="${color}"/><rect x="${x - Math.min(8, step * .28)}" y="${volumeY(volume)}" width="${Math.min(16, step * .56)}" height="${310 - volumeY(volume)}" fill="${color}" opacity=".68"/>${issue ? `<circle cx="${x}" cy="18" r="6" fill="#df9a36"/>` : ''}${axis}<rect x="${x - step * .36}" y="10" width="${step * .72}" height="300" fill="transparent"/><title>${esc(slot)}：开${open} 高${hi} 低${lo} 收${close} 量${volume}${issue ? '；有数据异常提示' : ''}</title></g>`;
       }).join('');
       const grid = [0, .5, 1].map(t => {
         const y = 32 + 195 * t, value = max - (max - min) * t;
         return `<line x1="48" y1="${y}" x2="${right}" y2="${y}" stroke="#e8edef"/><text x="43" y="${y + 4}" text-anchor="end" fill="#6c808a" font-size="11">${value.toFixed(1)}</text>`;
       }).join('');
-      const chosen = state.chartSelection, selectedRow = rows.get(chosen), selectedIssue = issues.filter(i => i.time === chosen);
-      const detail = chosen && visible.includes(chosen)
-        ? selectedRow
-          ? `<strong>${esc(chosen)} · 开 ${selectedRow.values[0]} / 高 ${selectedRow.values[1]} / 低 ${selectedRow.values[2]} / 收 ${selectedRow.values[3]} / 量 ${selectedRow.values[4]}</strong>${selectedIssue.length ? esc(selectedIssue.map(i => i.text).join('；')) : ''}`
-          : `<strong>${esc(chosen)} · 无行情</strong>`
-        : '';
-      return `${slots.length > pageSize ? `<div class="chart-toolbar"><p class="small muted">${state.chartOffset + 1} / ${Math.ceil(slots.length / pageSize)} 段</p><div class="actions"><button type="button" class="btn" data-action="chart-prev" ${start === 0 ? 'disabled' : ''}>上一段</button><button type="button" class="btn" data-action="chart-next" ${start + pageSize >= slots.length ? 'disabled' : ''}>下一段</button></div></div>` : ''}<div class="chart-wrap"><svg width="${width}" height="352" viewBox="0 0 ${width} 352" role="img" aria-label="${esc(f.symbol)} 的 K 线和成交量；无行情的时间留空"><text x="12" y="20" fill="#6c808a" font-size="11">价格</text>${grid}<line x1="48" y1="310" x2="${right}" y2="310" stroke="#cbd9de"/><text x="12" y="283" fill="#6c808a" font-size="11">量</text>${marks}</svg></div><p class="chart-legend"><b style="background:${up}"></b>涨或平 <b style="background:${down}"></b>跌 ${c.missing.length ? '<b style="background:#f8fafb;border:1px dashed #b8c9d2"></b>无行情 ' : ''}${issues.length ? '<b style="background:#df9a36"></b>异常提示 ' : ''}· 点击 K 线看数值</p>${detail ? `<div class="chart-detail" role="status">${detail}</div>` : ''}`;
+      const range = slots.length > maxVisible ? `<div class="chart-range" aria-label="显示范围"><div class="range-track" id="range-track"><div class="range-window" style="left:${start / slots.length * 100}%;width:${count / slots.length * 100}%" tabindex="0" role="slider" aria-label="移动显示范围" aria-valuemin="1" aria-valuemax="${slots.length - count + 1}" aria-valuenow="${start + 1}" aria-valuetext="${esc(visible[0])} 至 ${esc(visible.at(-1))}" title="拖动中间看前后行情"><span class="range-handle start" tabindex="0" role="slider" aria-label="调整范围起点" aria-valuemin="1" aria-valuemax="${start + count - minVisible + 1}" aria-valuenow="${start + 1}" title="拖动缩放"></span><span class="range-handle end" tabindex="0" role="slider" aria-label="调整范围终点" aria-valuemin="${start + minVisible}" aria-valuemax="${Math.min(slots.length, start + maxVisible)}" aria-valuenow="${start + count}" title="拖动缩放"></span></div></div><div class="range-dates"><span>${esc(slots[0])}</span><span>${esc(slots.at(-1))}</span></div></div>` : '';
+      return `<div id="chart-readout" class="chart-readout" role="status"></div><div class="chart-wrap"><svg id="candle-svg" width="${width}" height="352" viewBox="0 0 ${width} 352" role="img" aria-label="${esc(f.symbol)} 的 K 线和成交量；无行情的时间留空"><text x="12" y="20" fill="#6c808a" font-size="11">价格</text>${grid}<line x1="48" y1="310" x2="${right}" y2="310" stroke="#cbd9de"/><text x="12" y="283" fill="#6c808a" font-size="11">量</text><line id="chart-focus-line" x1="0" x2="0" y1="28" y2="310" stroke="#496c7d" stroke-width="1" stroke-dasharray="4 4" pointer-events="none"/>${marks}</svg></div>${range}<p class="chart-legend"><b style="background:${up}"></b>涨或平 <b style="background:${down}"></b>跌 ${c.missing.length ? '<b style="background:#f8fafb;border:1px dashed #b8c9d2"></b>无行情 ' : ''}${issues.length ? '<b style="background:#df9a36"></b>异常提示 ' : ''}</p>`;
+    }
+    function updateChartFocus() {
+      const context = state.chartContext, readout = document.getElementById('chart-readout');
+      if (!context || !readout) return;
+      const slot = state.chartSelection || state.chartHover || context.defaultSlot;
+      const row = context.rows.get(slot), mark = [...document.querySelectorAll('.chart-point')].find(x => x.dataset.id === slot);
+      document.querySelectorAll('.chart-point').forEach(x => x.classList.toggle('is-active', x === mark));
+      const line = document.getElementById('chart-focus-line');
+      if (line && mark) { line.setAttribute('x1', mark.dataset.x); line.setAttribute('x2', mark.dataset.x); }
+      const note = context.issues.filter(x => x.time === slot).map(x => x.text).join('；');
+      const summary = document.getElementById('chart-anomaly-summary');
+      if (summary) summary.hidden = context.issues.length === 1 && Boolean(note);
+      readout.innerHTML = row ? `<strong>${esc(slot)}</strong>开 ${row.values[0]}　高 ${row.values[1]}　低 ${row.values[2]}　收 ${row.values[3]}　量 ${row.values[4]}${note ? `<span class="market-warning">数据异常提示：${esc(note)}</span>` : ''}` : `<strong>${esc(slot)}</strong>无行情`;
     }
     function searchForm() {
       const f = state.filters;
@@ -309,7 +351,7 @@
             <div class="actions"><div class="field"><label for="version-select">版本</label><select id="version-select">${versions}</select></div>
             ${days.length ? `<div class="field"><label for="chart-day">日期</label><select id="chart-day">${days.map(day => `<option value="${esc(day)}" ${day === state.chartDay ? 'selected' : ''}>${esc(day)}</option>`).join('')}</select></div><div class="field"><label for="chart-segment">时段</label><select id="chart-segment">${choices.map(s => { const value = s.join('-'); return `<option value="${value}" ${value === state.chartSegment ? 'selected' : ''}>${value}</option>`; }).join('')}</select></div>` : ''}</div>
           </div>
-          ${issues.length ? `<p class="anomaly-note">${esc(issues.length === 1 ? '有数据异常提示' : `${issues.length} 处数据异常提示`)} · 点击标记查看</p>` : ''}
+          ${issues.length ? `<p id="chart-anomaly-summary" class="anomaly-note">有数据异常提示</p>` : ''}
           ${candleChart(c, scoped, issues)}
           <details class="detail-section"><summary>导入记录</summary>
             <p class="small muted">来源：${esc(d.source)}</p><p class="small muted">${esc(v.id)} ${v.basedOn === '首次导入' ? '首次导入' : `基于 ${esc(v.basedOn)}`}</p>
@@ -390,6 +432,8 @@
       const views = { list: listPage, detail: detailPage, upload: uploadPage, preview: previewPage, review: reviewPage, result: resultPage };
       if (!views[state.page]) state.page = 'list';
       main.innerHTML = (state.message ? `<div class="message ${state.message.type}" role="status">${esc(state.message.text)}</div>` : '') + views[state.page]();
+      updateChartFocus();
+      document.getElementById('candle-svg')?.addEventListener('pointerleave', () => { state.chartHover = null; updateChartFocus(); });
       document.getElementById('search-form')?.addEventListener('submit', submitSearch);
       const search = document.getElementById('search-form');
       const markSearchDirty = () => {
@@ -407,13 +451,13 @@
         if (choice) choice.hidden = Boolean(symbolMarket(event.target.value.trim().toUpperCase()));
       });
       document.getElementById('version-select')?.addEventListener('change', event => {
-        state.selectedVersion = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+        state.selectedVersion = event.target.value; resetChartView(); render();
       });
       document.getElementById('chart-day')?.addEventListener('change', event => {
-        state.chartDay = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+        state.chartDay = event.target.value; resetChartView(); render();
       });
       document.getElementById('chart-segment')?.addEventListener('change', event => {
-        state.chartSegment = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+        state.chartSegment = event.target.value; resetChartView(); render();
       });
       document.getElementById('source-choice')?.addEventListener('change', event => {
         const fields = document.getElementById('new-source-fields');
@@ -648,17 +692,16 @@
       const dates = [...new Set(changedRows.map(r => r.time.slice(0, 10)))].sort();
       state.result = { dataset: d, version: v, batch: batches[batchId], added: a.newRows.length, changed: a.changed.length, changedRows, symbols: [...new Set(changedRows.map(r => r.symbol))].sort(), dates, dateSpan: dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ～ ${dates.at(-1)}` };
       state.searchDirty = false;
-      state.chartDay = null; state.chartOffset = 0; state.chartSelection = null;
+      state.chartDay = null; resetChartView();
       state.selectedId = d.id; state.selectedVersion = v.id; state.pending = null; go('result');
     }
     document.addEventListener('click', event => {
-      const t = event.target.closest('[data-action]'); if (!t) return;
+      const t = event.target.closest('[data-action]');
+      if (!t) { if (event.target.closest('#candle-svg')) { state.chartSelection = null; state.chartHover = null; updateChartFocus(); } return; }
       const action = t.dataset.action;
       if (action === 'list') go('list');
-      else if (action === 'open-dataset') { state.selectedId = t.dataset.id; state.selectedVersion = latest(selectedDataset()).id; state.chartDay = null; state.chartOffset = 0; state.chartSelection = null; go('detail'); }
-      else if (action === 'chart-point') { state.chartSelection = t.dataset.id; render(); }
-      else if (action === 'chart-prev') { state.chartOffset = Math.max(0, state.chartOffset - 1); state.chartSelection = null; render(); }
-      else if (action === 'chart-next') { state.chartOffset++; state.chartSelection = null; render(); }
+      else if (action === 'open-dataset') { state.selectedId = t.dataset.id; state.selectedVersion = latest(selectedDataset()).id; state.chartDay = null; resetChartView(); go('detail'); }
+      else if (action === 'chart-point') { state.chartSelection = t.dataset.id; state.chartHover = null; updateChartFocus(); }
       else if (action === 'upload-new') { state.uploadTarget = null; state.pending = null; go('upload'); }
       else if (action === 'upload-dataset') { state.uploadTarget = t.dataset.id; state.pending = null; go('upload'); }
       else if (action === 'upload-existing') { state.uploadTarget = state.selectedId; state.pending = null; go('upload'); }
@@ -674,16 +717,70 @@
         if (!symbol) return;
         const times = r.changedRows.filter(x => x.symbol === symbol).map(x => x.time.slice(0, 10)).sort();
         state.filters = { ...state.filters, market: r.dataset.market, interval: r.dataset.interval, symbol, from: times[0], to: times.at(-1) };
-        state.chartDay = null; state.chartSegment = null; state.chartSelection = null; state.chartOffset = 0;
+        state.chartDay = null; state.chartSegment = null; resetChartView();
         go('detail');
       }
       else if (action === 'detail') go('detail');
     });
+    document.addEventListener('pointerdown', event => {
+      const track = event.target.closest('#range-track'), context = state.chartContext;
+      if (!track || !context || event.button !== 0) return;
+      event.preventDefault();
+      const handle = event.target.closest('.range-handle');
+      const mode = handle?.classList.contains('start') ? 'start' : handle ? 'end' : event.target.closest('.range-window') ? 'move' : 'jump';
+      if (mode === 'jump') {
+        const position = (event.clientX - track.getBoundingClientRect().left) / track.clientWidth;
+        state.chartWindow.start = Math.max(0, Math.min(context.slots.length - state.chartWindow.count, Math.round(position * context.slots.length - state.chartWindow.count / 2)));
+        state.chartHover = null; render(); return;
+      }
+      rangeDrag = { mode, x: event.clientX, width: track.clientWidth, total: context.slots.length, maxVisible: context.maxVisible, minVisible: context.minVisible, ...state.chartWindow };
+    });
+    document.addEventListener('pointermove', event => {
+      if (rangeDrag) {
+        const drag = rangeDrag, delta = Math.round((event.clientX - drag.x) / drag.width * drag.total);
+        let start = drag.start, count = drag.count;
+        if (drag.mode === 'move') start = Math.max(0, Math.min(drag.total - count, drag.start + delta));
+        if (drag.mode === 'start') {
+          const end = drag.start + drag.count;
+          start = Math.max(0, Math.min(end - drag.minVisible, Math.max(end - drag.maxVisible, drag.start + delta)));
+          count = end - start;
+        }
+        if (drag.mode === 'end') count = Math.max(drag.minVisible, Math.min(Math.min(drag.total - drag.start, drag.maxVisible), drag.count + delta));
+        if (start !== state.chartWindow.start || count !== state.chartWindow.count) {
+          state.chartWindow = { start, count }; state.chartHover = null; render();
+        }
+        return;
+      }
+      if (!event.target.closest('#candle-svg')) return;
+      const next = event.target.closest('.chart-point')?.dataset.id || null;
+      if (next !== state.chartHover) { state.chartHover = next; updateChartFocus(); }
+    });
+    document.addEventListener('pointerup', () => { rangeDrag = null; });
+    document.addEventListener('pointercancel', () => { rangeDrag = null; });
     document.addEventListener('keydown', event => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.chart-point')) {
-        event.preventDefault(); state.chartSelection = event.target.dataset.id; render();
+        event.preventDefault(); state.chartSelection = event.target.dataset.id; state.chartHover = null; updateChartFocus();
       }
+      if (['ArrowLeft', 'ArrowRight'].includes(event.key) && event.target.matches('.chart-point')) {
+        const points = [...document.querySelectorAll('.chart-point')], next = points[points.indexOf(event.target) + (event.key === 'ArrowLeft' ? -1 : 1)];
+        if (next) { event.preventDefault(); state.chartSelection = next.dataset.id; state.chartHover = null; updateChartFocus(); next.focus(); }
+      }
+      const windowControl = event.target.closest('.range-window');
+      if (!windowControl || !['ArrowLeft', 'ArrowRight'].includes(event.key) || !state.chartWindow || !state.chartContext) return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1, handle = event.target.closest('.range-handle');
+      let { start, count } = state.chartWindow;
+      const { slots, minVisible, maxVisible } = state.chartContext;
+      if (handle?.classList.contains('start')) {
+        const end = start + count;
+        start = Math.max(0, Math.min(end - minVisible, Math.max(end - maxVisible, start + direction)));
+        count = end - start;
+      } else if (handle) count = Math.max(minVisible, Math.min(Math.min(slots.length - start, maxVisible), count + direction));
+      else start = Math.max(0, Math.min(slots.length - count, start + direction));
+      state.chartWindow = { start, count }; state.chartHover = null; render();
+      document.querySelector(handle ? `.range-handle.${handle.classList.contains('start') ? 'start' : 'end'}` : '.range-window')?.focus();
     });
+    window.addEventListener('resize', () => { if (state.page === 'detail') render(); });
     render();
   </script>
 </body>
