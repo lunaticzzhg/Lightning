@@ -73,6 +73,15 @@
     .back { margin-bottom: 16px; }
     .search-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
     .search-grid .field { margin-bottom: 12px; }
+    .stock-field { position: relative; }
+    .stock-input { display: flex; }
+    .stock-input input { border-radius: 7px 0 0 7px; }
+    .stock-input button { width: 42px; flex: none; border: 1px solid #b8c9d2; border-left: 0; border-radius: 0 7px 7px 0; background: #fff; color: #26495a; }
+    .stock-options { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; max-height: 230px; overflow: auto; background: #fff; border: 1px solid #b8c9d2; border-radius: 7px; box-shadow: 0 8px 20px #17344720; }
+    .stock-option { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; border: 0; background: #fff; color: #193044; text-align: left; }
+    .stock-option:hover, .stock-option:focus-visible { background: #eaf4f1; }
+    .stock-option small, .stock-options-empty { color: #6c808a; font-size: 12px; }
+    .stock-options-empty { padding: 11px 12px; }
     .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .result-head h2 { margin-bottom: 5px; }
     .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -146,6 +155,7 @@
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const qs = new URLSearchParams(location.search);
     const rangeDemo = qs.get('demo') === 'range';
+    const stockErrorDemo = qs.get('demo') === 'stock-error';
     const demoDays = rangeDemo
       ? Array.from({ length: 115 }, (_, i) => { const d = new Date('2026-07-01T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i); return d.toISOString().slice(0, 10); }).filter(day => ![0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay()) && (day < '2026-10-01' || day > '2026-10-07'))
       : ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
@@ -187,7 +197,7 @@
         return bar('600519', 'SH', day, [open, open + 12, open - 9, open + Math.sin(i) * 7, 220000 + i * 1100].map((value, index) => index < 4 ? Number(value.toFixed(2)) : value), 'B006');
       }));
     }
-    const initialFilters = { market: 'A 股', interval: '日线', symbol: '600519', from: rangeDemo ? demoDays[0] : '2026-10-20', to: '2026-10-23' };
+    const initialFilters = { market: 'A 股', interval: '日线', symbol: '600519', exchange: '', from: rangeDemo ? demoDays[0] : '2026-10-20', to: '2026-10-23' };
     const state = { datasets: qs.has('empty') ? [] : seed, page: 'list', filters: initialFilters, searchDirty: false, selectedId: 'D001', selectedVersion: 'V002', chartDay: null, chartWindow: null, chartSelection: null, chartHover: null, chartContext: null, chartSegment: null, reviewPage: 0, uploadTarget: null, pending: null, result: null, message: null };
     let rangeDrag = null;
     const resetChartView = () => { state.chartWindow = null; state.chartSelection = null; state.chartHover = null; };
@@ -206,7 +216,7 @@
     const savedSpan = rows => { const times = rows.map(r => r.time).sort(); return times.length ? `${times[0]}${times.length > 1 ? ` ～ ${times.at(-1)}` : ''}` : ''; };
     const keyOf = r => `${r.symbol}|${r.exchange}|${r.time}`;
     const inRange = (time, f) => time.slice(0, 10) >= f.from && time.slice(0, 10) <= f.to && (!f.segment || f.interval === '日线' || (time.slice(11) >= f.minuteFrom && time.slice(11) <= f.minuteTo));
-    const matchingRows = (v, f) => v.rows.filter(r => r.symbol.toUpperCase() === f.symbol.toUpperCase() && inRange(r.time, f));
+    const matchingRows = (v, f) => v.rows.filter(r => r.symbol.toUpperCase() === f.symbol.toUpperCase() && (!f.exchange || r.exchange === f.exchange) && inRange(r.time, f));
     const inferExchange = (symbol, market) => market === 'A 股' ? (/^6/.test(symbol) ? 'SH' : /^[03]/.test(symbol) ? 'SZ' : /^[48]/.test(symbol) ? 'BJ' : '') : '';
     function slotsFor(f) {
       const days = demoDays.filter(day => day >= f.from && day <= f.to);
@@ -292,11 +302,34 @@
       if (summary) summary.hidden = context.issues.length === 1 && Boolean(note);
       readout.innerHTML = row ? `<strong>${esc(slot)}</strong>开 ${row.values[0]}　高 ${row.values[1]}　低 ${row.values[2]}　收 ${row.values[3]}　量 ${row.values[4]}${note ? `<span class="market-warning">数据异常提示：${esc(note)}</span>` : ''}` : `<strong>${esc(slot)}</strong>无行情`;
     }
+    function savedStocks(interval) {
+      const stocks = new Map();
+      state.datasets.filter(d => d.interval === interval).forEach(d => latest(d).rows.forEach(r => {
+        stocks.set(`${d.market}|${r.exchange}|${r.symbol}`, { symbol: r.symbol, exchange: r.exchange, market: d.market });
+      }));
+      return [...stocks.values()].sort((a, b) => a.symbol.localeCompare(b.symbol) || a.exchange.localeCompare(b.exchange));
+    }
+    function updateStockOptions(open, filterText = false) {
+      const input = document.getElementById('symbol'), list = document.getElementById('stock-options'), toggle = document.getElementById('stock-toggle');
+      if (!input || !list || !toggle) return;
+      if (!open) { closeStockOptions(); return; }
+      const query = filterText ? input.value.trim().toUpperCase() : '';
+      const matches = savedStocks(document.getElementById('interval').value).filter(item => item.symbol.includes(query));
+      list.innerHTML = stockErrorDemo ? '<div class="stock-options-empty">候选暂不可用，可直接输入代码</div>' : matches.length ? matches.map(item => `<button type="button" class="stock-option" role="option" data-symbol="${esc(item.symbol)}" data-exchange="${esc(item.exchange)}" data-market="${esc(item.market)}"><span>${esc(item.symbol)} · ${esc(item.exchange)}</span><small>${esc(item.market)}</small></button>`).join('') : '<div class="stock-options-empty">无匹配，可直接查找</div>';
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+    function closeStockOptions() {
+      const list = document.getElementById('stock-options'), input = document.getElementById('symbol'), toggle = document.getElementById('stock-toggle');
+      if (list) list.hidden = true;
+      input?.setAttribute('aria-expanded', 'false');
+      toggle?.setAttribute('aria-expanded', 'false');
+    }
     function searchForm() {
       const f = state.filters;
-      const suggestions = [...new Set(state.datasets.flatMap(d => latest(d).rows.map(r => r.symbol)))];
       return `<section class="card"><h2>查找行情</h2><form id="search-form"><div class="search-grid">
-        <div class="field"><label for="symbol">股票代码</label><input id="symbol" name="symbol" value="${esc(f.symbol)}" list="saved-symbols" placeholder="例如 600519 或 AAPL" required><datalist id="saved-symbols">${suggestions.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        <div class="field stock-field"><label for="symbol">股票</label><div class="stock-input"><input id="symbol" name="symbol" role="combobox" aria-autocomplete="list" aria-controls="stock-options" aria-expanded="false" value="${esc(f.symbol)}" placeholder="输入代码或选择" autocomplete="off" required><button id="stock-toggle" type="button" aria-label="选择已保存股票" aria-expanded="false">⌄</button></div><input id="stock-exchange" name="exchange" type="hidden" value="${esc(f.exchange || '')}"><input id="stock-market" name="pickedMarket" type="hidden" value="${f.exchange ? esc(f.market) : ''}"><div id="stock-options" class="stock-options" role="listbox" aria-label="已保存股票" hidden></div></div>
         <div class="field"><label for="interval">行情周期</label><select id="interval" name="interval"><option ${f.interval === '日线' ? 'selected' : ''}>日线</option><option ${f.interval === '1 分钟线' ? 'selected' : ''}>1 分钟线</option></select></div>
         <div class="field"><label for="from">开始日期</label><input id="from" name="from" type="date" value="${esc(f.from)}" required></div>
         <div class="field"><label for="to">结束日期</label><input id="to" name="to" type="date" value="${esc(f.to)}" required></div>
@@ -305,7 +338,7 @@
     function listPage() {
       const f = state.filters;
       if (!state.datasets.length) return head('历史数据') + `<section class="card empty"><h2>还没有历史行情</h2>${button('导入文件', 'upload-new', '', true)}</section>`;
-      const matches = state.datasets.filter(d => d.market === f.market && d.interval === f.interval && latest(d).rows.some(r => r.symbol.toUpperCase() === f.symbol.toUpperCase()));
+      const matches = state.datasets.filter(d => d.market === f.market && d.interval === f.interval && latest(d).rows.some(r => r.symbol.toUpperCase() === f.symbol.toUpperCase() && (!f.exchange || r.exchange === f.exchange)));
       let results = `<section class="card empty"><h2>还没有 ${esc(f.symbol)} 的${f.interval === '日线' ? '日线行情' : ' 1 分钟行情'}</h2>${button('导入文件', 'upload-new', '', true)}</section>`;
       if (matches.length) results = matches.map(d => {
         const v = latest(d), c = coverage(v, f);
@@ -447,8 +480,53 @@
       document.getElementById('result-symbol')?.addEventListener('change', event => { document.getElementById('result-detail-button').disabled = !event.target.value; });
       document.getElementById('confirm-form')?.addEventListener('submit', confirmFile);
       document.getElementById('symbol')?.addEventListener('input', event => {
+        document.getElementById('stock-exchange').value = '';
+        document.getElementById('stock-market').value = '';
         const choice = document.getElementById('market-choice');
         if (choice) choice.hidden = Boolean(symbolMarket(event.target.value.trim().toUpperCase()));
+        updateStockOptions(true, true);
+      });
+      document.getElementById('symbol')?.addEventListener('focus', () => updateStockOptions(true));
+      document.getElementById('symbol')?.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { closeStockOptions(); return; }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault(); updateStockOptions(true, true);
+          document.querySelector('.stock-option')?.focus();
+        }
+      });
+      document.getElementById('stock-toggle')?.addEventListener('click', () => {
+        const open = document.getElementById('stock-options').hidden;
+        updateStockOptions(open);
+        if (open) document.getElementById('symbol').focus();
+      });
+      document.getElementById('stock-options')?.addEventListener('click', event => {
+        const option = event.target.closest('.stock-option');
+        if (!option) return;
+        const input = document.getElementById('symbol');
+        input.value = option.dataset.symbol;
+        state.searchDirty = true;
+        const results = document.getElementById('search-results');
+        if (results) results.hidden = true;
+        document.getElementById('stock-exchange').value = option.dataset.exchange;
+        document.getElementById('stock-market').value = option.dataset.market;
+        document.getElementById('market-choice').hidden = true;
+        input.focus(); closeStockOptions();
+      });
+      document.getElementById('stock-options')?.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { closeStockOptions(); document.getElementById('symbol').focus(); return; }
+        if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+        event.preventDefault();
+        const options = [...document.querySelectorAll('.stock-option')];
+        const next = options[options.indexOf(event.target) + (event.key === 'ArrowDown' ? 1 : -1)];
+        next?.focus();
+      });
+      document.getElementById('interval')?.addEventListener('change', () => {
+        const list = document.getElementById('stock-options');
+        updateStockOptions(Boolean(list && !list.hidden));
+      });
+      document.querySelector('.stock-field')?.addEventListener('focusout', event => {
+        const field = event.currentTarget;
+        if (!field.contains(event.relatedTarget)) closeStockOptions();
       });
       document.getElementById('version-select')?.addEventListener('change', event => {
         state.selectedVersion = event.target.value; resetChartView(); render();
@@ -523,7 +601,8 @@
       f.symbol = (f.symbol || '').trim().toUpperCase();
       const error = document.getElementById('search-error');
       if (f.from > f.to) return error.textContent = '结束日期不能早于开始日期。';
-      f.market = symbolMarket(f.symbol) || f.market;
+      f.market = f.pickedMarket || symbolMarket(f.symbol) || f.market;
+      delete f.pickedMarket;
       if (!f.market) return error.textContent = '请选择股票所属市场。';
       state.filters = { ...initialFilters, ...f }; state.searchDirty = false; go('list');
     }
@@ -696,6 +775,7 @@
       state.selectedId = d.id; state.selectedVersion = v.id; state.pending = null; go('result');
     }
     document.addEventListener('click', event => {
+      if (!event.target.closest('.stock-field')) closeStockOptions();
       const t = event.target.closest('[data-action]');
       if (!t) { if (event.target.closest('#candle-svg')) { state.chartSelection = null; state.chartHover = null; updateChartFocus(); } return; }
       const action = t.dataset.action;

@@ -88,6 +88,11 @@ class MarketSearchItem(BaseModel):
     version_id: str
     version_number: int
 
+class MarketStockCandidate(BaseModel):
+    market: str
+    exchange: str
+    symbol: str
+
 class MarketSearch(BaseModel):
     reason: str
     results: list[MarketSearchItem]

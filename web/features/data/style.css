@@ -1,5 +1,15 @@
 .marketSearch{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
 .marketSearch label{min-width:150px;flex:1;margin:0}
+.marketStockField{position:relative;min-width:180px;flex:1}
+.marketStockField>label{display:block;margin-bottom:6px}
+.marketStockInput{display:flex}
+.marketStockInput input{width:100%;min-width:0;border-radius:7px 0 0 7px}
+.marketStockInput button{width:42px;flex:none;border:1px solid #b8c9d2;border-left:0;border-radius:0 7px 7px 0;background:#fff;color:#26495a}
+.marketStockOptions{position:absolute;z-index:5;top:100%;left:0;right:0;max-height:230px;overflow:auto;background:#fff;border:1px solid #b8c9d2;border-radius:7px;box-shadow:0 8px 20px #17344720}
+.marketStockOptions button{display:flex;justify-content:space-between;gap:8px;width:100%;padding:10px 12px;border:0;background:#fff;color:#193044;text-align:left}
+.marketStockOptions button:hover,.marketStockOptions button.active,.marketStockOptions button:focus-visible{background:#eaf4f1}
+.marketStockOptions small,.marketStockEmpty{color:#6c808a;font-size:12px}
+.marketStockEmpty{padding:11px 12px}
 .marketSearch button{margin-bottom:0}
 .marketSearch select,select{display:block;width:100%;min-height:40px;border:1px solid #b8c9d2;border-radius:7px;padding:8px;background:#fff}
 .marketResult{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e5ecef;padding:16px 0;gap:12px}
@@ -33,4 +43,4 @@
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{border-bottom:1px solid #dce5e9;text-align:left;padding:9px;overflow-wrap:anywhere}
 summary{cursor:pointer;font-weight:650}
-@media(max-width:600px){.marketResult{align-items:stretch;flex-direction:column}.marketChartReadout strong{display:block}.marketRangeDates{font-size:11px}}
+@media(max-width:600px){.marketStockField{flex-basis:100%}.marketResult{align-items:stretch;flex-direction:column}.marketChartReadout strong{display:block}.marketRangeDates{font-size:11px}}

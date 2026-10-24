@@ -1,6 +1,7 @@
 from pathlib import Path
+import json
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from backend.app.api import create_app
 from backend.infra.database import ensure_schema
 
@@ -94,6 +95,70 @@ def test_same_symbol_on_two_exchanges_is_separate(tmp_path):
     assert api.get(endpoint, params={'symbol':'ABC','from_date':'2026-10-23','to_date':'2026-10-23'}).status_code == 400
     chart = api.get(endpoint, params={'symbol':'ABC','from_date':'2026-10-23','to_date':'2026-10-23','exchange':'NASDAQ'}).json()
     assert len(chart['bars']) == 1 and chart['bars'][0]['close'] == '20'
+
+def test_stock_candidates_latest_coverage_deduplicates_sources_and_periods(tmp_path):
+    api, headers = client(tmp_path)
+    assert api.get('/api/market/stocks', params={'period':'day'}).json() == []
+    rows = 'symbol,exchange,date,open,high,low,close,volume\nABC,NYSE,2026-10-23,10,11,9,10,1\nABC,NASDAQ,2026-10-23,20,21,19,20,1\nXYZ,NYSE,2026-10-23,10,11,9,10,1\n'
+    first = upload(api, headers, rows)
+    created = api.post(f'/api/market/drafts/{first}/publish', json=choice(), headers=headers).json()
+    second = upload(api, headers, 'symbol,exchange,date,open,high,low,close,volume\nABC,NYSE,2026-10-23,10,11,9,10,1\n')
+    api.post(f'/api/market/drafts/{second}/publish', json={**choice(), 'provider':'另一来源'}, headers=headers)
+    minute = upload(api, headers, 'symbol,exchange,timestamp,open,high,low,close,volume\nAAPL,NASDAQ,2026-07-01T09:31:00-04:00,10,11,9,10,2\n')
+    api.post(f'/api/market/drafts/{minute}/publish', json={**choice(), 'minute_position':'start'}, headers=headers)
+    day = api.get('/api/market/stocks', params={'period':'day'}).json()
+    assert day == [{'market':'US','exchange':'NASDAQ','symbol':'ABC'}, {'market':'US','exchange':'NYSE','symbol':'ABC'}, {'market':'US','exchange':'NYSE','symbol':'XYZ'}]
+    assert api.get('/api/market/stocks', params={'period':'minute'}).json() == [{'market':'US','exchange':'NASDAQ','symbol':'AAPL'}]
+    assert api.get('/api/market/stocks', params={'period':'day','query':'bc'}).json() == day[:2]
+    assert api.get('/api/market/stocks', params={'period':'day','query':'ZZZ'}).json() == []
+    assert api.get('/api/market/stocks', params={'period':'hour'}).status_code == 400
+    # Only the newest version directory is authoritative, even if an older one still lists the stock.
+    later = upload(api, headers, 'symbol,exchange,date,open,high,low,close,volume\nABC,NYSE,2026-10-26,10,11,9,10,1\n')
+    newer = api.post(f'/api/market/drafts/{later}/publish', json=choice(), headers=headers).json()
+    engine = create_engine(f'sqlite:///{tmp_path / "db.sqlite"}')
+    with engine.begin() as db:
+        coverage = json.loads(db.execute(text('SELECT coverage FROM market_versions WHERE id=:id'), {'id':newer['version_id']}).scalar_one())
+        coverage.pop('NYSE:XYZ')
+        db.execute(text('UPDATE market_versions SET coverage=:coverage WHERE id=:id'), {'coverage':json.dumps(coverage), 'id':newer['version_id']})
+    assert created['version_id'] != newer['version_id']
+    assert api.get('/api/market/stocks', params={'period':'day','query':'XYZ'}).json() == []
+
+def test_stock_search_exchange_filter_and_validation(tmp_path):
+    api, headers = client(tmp_path)
+    draft = upload(api, headers, 'symbol,exchange,date,open,high,low,close,volume\nABC,NYSE,2026-10-23,10,11,9,10,1\nABC,NASDAQ,2026-10-23,20,21,19,20,1\n')
+    api.post(f'/api/market/drafts/{draft}/publish', json=choice(), headers=headers)
+    params = {'symbol':'ABC','period':'day','from_date':'2026-10-23','to_date':'2026-10-23'}
+    assert {r['exchange'] for r in api.get('/api/market/search', params=params).json()['results']} == {'NYSE','NASDAQ'}
+    selected = api.get('/api/market/search', params={**params,'exchange':'NYSE'}).json()
+    assert [r['exchange'] for r in selected['results']] == ['NYSE']
+    assert api.get('/api/market/search', params={**params,'symbol':'MISSING','exchange':'NYSE'}).json()['reason'] == 'no_source'
+    for extra in ({'exchange':'SH'}, {'exchange':'WRONG'}, {'exchange':'NYSE','market':'CN'}):
+        assert api.get('/api/market/search', params={**params,**extra}).status_code == 400
+
+def test_stock_candidates_do_not_read_parquet(tmp_path):
+    api, headers = client(tmp_path)
+    draft = upload(api, headers, 'symbol,exchange,date,open,high,low,close,volume\n600000,SH,2026-10-23,10,11,9,10,1\n')
+    api.post(f'/api/market/drafts/{draft}/publish', json=choice(), headers=headers)
+    for path in (tmp_path/'market'/'bars').rglob('*.parquet'):
+        path.chmod(0o644)
+        path.write_bytes(b'corrupt')
+    assert api.get('/api/market/stocks', params={'period':'day'}).json() == [{'market':'CN','exchange':'SH','symbol':'600000'}]
+
+def test_stock_candidates_are_bounded_and_database_failure_is_reported(tmp_path):
+    api, headers = client(tmp_path)
+    rows = 'symbol,exchange,date,open,high,low,close,volume\n' + ''.join(
+        f'{600000 + number},SH,2026-10-23,10,11,9,10,1\n' for number in range(55))
+    draft = upload(api, headers, rows)
+    result = api.post(f'/api/market/drafts/{draft}/publish', json=choice(), headers=headers)
+    assert result.status_code == 200, result.text
+    candidates = api.get('/api/market/stocks', params={'period':'day'}).json()
+    assert len(candidates) == 50
+    assert candidates[0]['symbol'] == '600000' and candidates[-1]['symbol'] == '600049'
+    engine = create_engine(f'sqlite:///{tmp_path / "db.sqlite"}')
+    with engine.begin() as db:
+        db.execute(text('DROP TABLE market_versions'))
+    unavailable = api.get('/api/market/stocks', params={'period':'day'})
+    assert unavailable.status_code == 503 and unavailable.json()['code'] == 'database_unavailable'
 
 def test_numeric_equivalence_is_not_a_correction(tmp_path):
     api, headers = client(tmp_path)

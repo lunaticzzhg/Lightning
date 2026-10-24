@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from backend.infra.database import (now, market_sources as sources, market_datasets as datasets,
     market_drafts as drafts, market_imports as imports, market_versions as versions)
-from .importer import InvalidFile, parse, normalize
+from .importer import InvalidFile, parse, normalize, EXCHANGES, infer_exchange, infer_market
 from .storage import Store, CorruptVersion
 
 class NotFound(Exception): pass
@@ -228,13 +228,37 @@ def result(engine, draft_id):
         draft = _draft(db, draft_id)
         return draft['result'] or {'status':'pending'}
 
-def search(engine, store, symbol, period, from_date, to_date, market=None):
+def stock_candidates(engine, period, query=''):
+    if period not in ('day', 'minute'): raise InvalidFile('周期无效')
+    if len(query) > 32: raise InvalidFile('代码片段过长')
+    needle = query.strip().upper()
+    candidates = set()
+    with engine.connect() as db:
+        rows = db.execute(select(datasets.c.id, datasets.c.market).where(datasets.c.period == period)).mappings().all()
+        for row in rows:
+            latest = _latest(db, row['id'])
+            if not latest: continue
+            for identity in latest['coverage']:
+                exchange, symbol = identity.split(':', 1)
+                if needle in symbol:
+                    candidates.add((row['market'], exchange, symbol))
+    return [{'market': market, 'exchange': exchange, 'symbol': symbol}
+            for market, exchange, symbol in sorted(candidates, key=lambda item: (item[2], item[0], item[1]))[:50]]
+
+def search(engine, store, symbol, period, from_date, to_date, market=None, exchange=None):
     if period not in ('day','minute'): raise InvalidFile('周期无效')
     try: first_day, last_day = date.fromisoformat(from_date), date.fromisoformat(to_date)
     except ValueError as exc: raise InvalidFile('日期无效') from exc
     if first_day > last_day: raise InvalidFile('开始日期不能晚于结束日期')
     if period == 'minute' and first_day != last_day: raise InvalidFile('分钟线请只选一个日期')
     if market and market not in ('CN','US'): raise InvalidFile('市场无效')
+    symbol = symbol.strip().upper()
+    if exchange:
+        if exchange not in EXCHANGES: raise InvalidFile('交易所无效')
+        if market and EXCHANGES[exchange] != market: raise InvalidFile('市场与交易所不一致')
+        if infer_market(symbol) and EXCHANGES[exchange] != infer_market(symbol): raise InvalidFile('股票代码与交易所不一致')
+        if infer_exchange(symbol) and exchange != infer_exchange(symbol): raise InvalidFile('股票代码与交易所不一致')
+        market = EXCHANGES[exchange]
     if not market:
         market = 'CN' if re.fullmatch(r'[0-9]{6}', symbol) else 'US' if re.fullmatch(r'[A-Za-z.]{1,8}', symbol) else None
     if market is None: return {'reason':'choose_market', 'results':[]}
@@ -247,10 +271,10 @@ def search(engine, store, symbol, period, from_date, to_date, market=None):
             latest = _latest(db, row['id'])
             if not latest: continue
             for identity, info in latest['coverage'].items():
-                exchange, listed_symbol = identity.split(':', 1)
-                if listed_symbol != symbol.upper(): continue
+                listed_exchange, listed_symbol = identity.split(':', 1)
+                if listed_symbol != symbol or (exchange and exchange != listed_exchange): continue
                 found.append({'dataset_id':row['id'], 'provider':row['provider'], 'product':row['product'],
-                    'market':row['market'], 'exchange':exchange, 'period':period, 'price_mode':row['price_mode'],
+                    'market':row['market'], 'exchange':listed_exchange, 'period':period, 'price_mode':row['price_mode'],
                     'adjustment':row['adjustment'], 'reference_date':row['reference_date'],
                     'first':info['first'], 'last':info['last'], 'has_bars':any(from_date <= value <= to_date for value in info['dates']),
                     'warning_count':sum(count for key,count in info['warning_count'].items() if from_date <= key <= to_date),

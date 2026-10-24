@@ -5,6 +5,7 @@ import { Chart } from './Chart'
 import './style.css'
 
 type Search = components['schemas']['MarketSearch']
+type StockCandidate = components['schemas']['MarketStockCandidate']
 type Draft = components['schemas']['MarketDraft']
 type Comparison = components['schemas']['MarketComparison']
 type ChartData = components['schemas']['MarketChart']
@@ -23,6 +24,15 @@ const segments = {
 export function Page() {
   const [screen,setScreen] = useState<Screen>('search')
   const [symbol,setSymbol] = useState('')
+  const [pickedStock,setPickedStock] = useState<StockCandidate|null>(null)
+  const [stockOpen,setStockOpen] = useState(false)
+  const [stockFiltering,setStockFiltering] = useState(false)
+  const [stockCandidates,setStockCandidates] = useState<StockCandidate[]>([])
+  const [stockLoading,setStockLoading] = useState(false)
+  const [stockError,setStockError] = useState(false)
+  const [activeStock,setActiveStock] = useState(-1)
+  const stockField = useRef<HTMLDivElement>(null)
+  const stockRequest = useRef(0)
   const [exchange,setExchange] = useState('')
   const [market,setMarket] = useState('')
   const [period,setPeriod] = useState('day')
@@ -62,6 +72,30 @@ export function Page() {
   const [targetMismatch,setTargetMismatch] = useState(false)
 
   useEffect(() => { void connect().catch(e => setError(message(e))) }, [])
+  useEffect(() => {
+    if (!stockOpen || screen !== 'search') return
+    let current = true
+    const request = ++stockRequest.current
+    setStockLoading(true); setStockError(false); setActiveStock(-1)
+    void marketApi.stockCandidates(period, stockFiltering ? symbol.trim() : '').then(items => {
+      if (current && request===stockRequest.current) setStockCandidates(items)
+    }).catch(() => {
+      if (current && request===stockRequest.current) { setStockCandidates([]); setStockError(true) }
+    }).finally(() => { if (current && request===stockRequest.current) setStockLoading(false) })
+    return () => { current = false }
+  }, [stockOpen, screen, period, symbol, stockFiltering])
+  useEffect(() => {
+    if (!stockOpen) return
+    const closeOutside = (event: PointerEvent) => {
+      if (!stockField.current?.contains(event.target as Node)) setStockOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [stockOpen])
+  function chooseStock(item: StockCandidate) {
+    setSymbol(item.symbol); setPickedStock(item); setMarket(item.market)
+    setSearch(null); setStockOpen(false); setStockFiltering(false); setActiveStock(-1)
+  }
   async function run(job: () => Promise<void>) {
     setBusy(true); setError('')
     try { await connect(); await job() }
@@ -70,14 +104,16 @@ export function Page() {
   }
   const rangeEnd = period === 'minute' ? fromDate : toDate
   const inferredMarket = /^\d{6}$/.test(symbol.trim()) || /^[A-Za-z.]{1,8}$/.test(symbol.trim())
-  const requestedMarket = inferredMarket ? undefined : market || undefined
-  const searchKey = [symbol.trim().toUpperCase(),period,fromDate,rangeEnd,requestedMarket??''].join('|')
+  const requestedMarket = pickedStock?.market ?? (inferredMarket ? undefined : market || undefined)
+  const searchExchange = pickedStock?.exchange
+  const searchKey = [symbol.trim().toUpperCase(),period,fromDate,rangeEnd,requestedMarket??'',searchExchange??''].join('|')
   async function doSearch(event?: FormEvent) {
     event?.preventDefault()
+    setStockOpen(false)
     if (fromDate > rangeEnd) { setError('开始日期不能晚于结束日期'); return }
-    const query = { symbol:symbol.trim().toUpperCase(), period, fromDate, toDate:rangeEnd, market:requestedMarket, key:searchKey }
+    const query = { symbol:symbol.trim().toUpperCase(), period, fromDate, toDate:rangeEnd, market:requestedMarket, exchange:searchExchange, key:searchKey }
     await run(async () => {
-      const found = await marketApi.search(query.symbol,query.period,query.fromDate,query.toDate,query.market)
+      const found = await marketApi.search(query.symbol,query.period,query.fromDate,query.toDate,query.market,query.exchange)
       setSearch(found);setSubmittedSearch(query.key)
       setScreen('search')
     })
@@ -100,7 +136,9 @@ export function Page() {
         marketApi.versions(ds),
       ])
       setChart(data);setVersions(all);setChartReady(true)
-      setSymbol(selectedSymbol);setExchange(selectedExchange);setScreen('chart')
+      setSymbol(selectedSymbol)
+      setPickedStock(current => current?.symbol===selectedSymbol.trim().toUpperCase() && current.exchange===selectedExchange ? current : null)
+      setExchange(selectedExchange);setScreen('chart')
     })
   }
   function beginUpload(target='') {
@@ -139,7 +177,7 @@ export function Page() {
     if (!result.dataset_id || !result.version_id) return
     setPublished(result);setDataset(result.dataset_id);setVersion(result.version_id);setPeriod(staged.period)
     setFromDate(staged.first.slice(0,10));setToDate(staged.period==='day'?staged.last.slice(0,10):staged.first.slice(0,10))
-    setSymbol(result.symbols?.length===1?result.symbols[0].split(':')[1]:'')
+    setSymbol(result.symbols?.length===1?result.symbols[0].split(':')[1]:'');setPickedStock(null)
     setExchange(result.symbols?.length===1?result.symbols[0].split(':')[0]:'')
     setComparison(null);setScreen('success')
     setNotice(`已生成版本 ${result.version_number}：新增 ${result.added} 条，修正 ${result.changed} 条。`)
@@ -194,8 +232,25 @@ export function Page() {
 
     {screen==='search'&&<>
       <section className="card"><form className="marketSearch" onSubmit={doSearch}>
-        <label>股票代码<input required value={symbol} onChange={e=>{setSymbol(e.target.value);setSearch(null)}} placeholder="例如 600519 或 AAPL" /></label>
-        <label>周期<select value={period} onChange={e=>{setPeriod(e.target.value);setSearch(null)}}><option value="day">日线</option><option value="minute">1 分钟线</option></select></label>
+        <div className="marketStockField" ref={stockField}>
+          <label htmlFor="market-stock">股票</label>
+          <div className="marketStockInput"><input id="market-stock" required role="combobox" aria-autocomplete="list" aria-controls="market-stock-options" aria-expanded={stockOpen} aria-activedescendant={stockOpen&&activeStock>=0?`market-stock-option-${activeStock}`:undefined} autoComplete="off" value={symbol}
+            onFocus={()=>{setStockFiltering(false);setStockOpen(true)}} onChange={e=>{stockRequest.current++;setSymbol(e.target.value);if(pickedStock)setMarket('');setPickedStock(null);setSearch(null);setStockCandidates([]);setActiveStock(-1);setStockLoading(true);setStockFiltering(true);setStockOpen(true)}} placeholder="输入代码或选择"
+            onKeyDown={e=>{
+              if (e.key==='Escape') { setStockOpen(false); setActiveStock(-1); return }
+              if (e.key==='ArrowDown') { e.preventDefault(); setStockOpen(true); if (!stockLoading && !stockError && stockCandidates.length) setActiveStock(i=>Math.min(i+1,stockCandidates.length-1)); return }
+              if (e.key==='ArrowUp') { e.preventDefault(); if (!stockLoading && !stockError && stockCandidates.length) setActiveStock(i=>Math.max(i-1,0)); return }
+              if (e.key==='Enter'&&stockOpen&&!stockLoading&&!stockError&&activeStock>=0&&stockCandidates[activeStock]) { e.preventDefault(); chooseStock(stockCandidates[activeStock]) }
+            }} />
+            <button type="button" aria-label="选择已保存股票" aria-expanded={stockOpen} onClick={()=>{if(!stockOpen)setStockFiltering(false);setStockOpen(value=>!value)}}>⌄</button></div>
+          {stockOpen&&<div id="market-stock-options" className="marketStockOptions" role="listbox" aria-label="已保存股票">
+            {stockLoading?<div className="marketStockEmpty" role="status">正在读取股票…</div>
+            :stockError?<div className="marketStockEmpty" role="status">候选暂不可用，可直接输入代码</div>
+            :stockCandidates.length===0?<div className="marketStockEmpty">无匹配，可直接查找</div>
+            :stockCandidates.map((item,index)=><button id={`market-stock-option-${index}`} key={`${item.market}:${item.exchange}:${item.symbol}`} type="button" role="option" aria-selected={index===activeStock} className={index===activeStock?'active':''} onMouseEnter={()=>setActiveStock(index)} onClick={()=>chooseStock(item)}><span>{item.symbol} · {item.exchange}</span><small>{item.market==='CN'?'A 股':'美股'}</small></button>)}
+          </div>}
+        </div>
+        <label>周期<select value={period} onChange={e=>{stockRequest.current++;setPeriod(e.target.value);setPickedStock(null);setSearch(null);setStockCandidates([]);setStockFiltering(false);setActiveStock(-1)}}><option value="day">日线</option><option value="minute">1 分钟线</option></select></label>
         <label>{period==='day'?'开始日期':'日期'}<input type="date" required value={fromDate} onChange={e=>{setFromDate(e.target.value);setSearch(null)}} /></label>
         {period==='day'&&<label>结束日期<input type="date" required value={toDate} onChange={e=>{setToDate(e.target.value);setSearch(null)}} /></label>}
         {!inferredMarket&&<label>市场<select value={market} onChange={e=>{setMarket(e.target.value);setSearch(null)}}><option value="">请选择</option><option value="CN">A 股</option><option value="US">美股</option></select></label>}

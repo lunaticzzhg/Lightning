@@ -51,7 +51,8 @@ export const api = {
 
 export const marketApi = {
   sources: async () => unwrap(await client.GET('/api/market/sources')),
-  search: async (symbol: string, period: string, fromDate: string, toDate: string, market?: string) => unwrap(await client.GET('/api/market/search', { params: { query: { symbol, period, from_date: fromDate, to_date: toDate, market } } })),
+  stockCandidates: async (period: string, query: string) => unwrap(await client.GET('/api/market/stocks', { params: { query: { period, query } } })),
+  search: async (symbol: string, period: string, fromDate: string, toDate: string, market?: string, exchange?: string) => unwrap(await client.GET('/api/market/search', { params: { query: { symbol, period, from_date: fromDate, to_date: toDate, market, exchange } } })),
   stage: async (file: File, targetDatasetId?: string) => unwrap(await client.POST('/api/market/drafts', { params: { header: { 'X-Lightning-Token': token }, query: { target_dataset_id: targetDatasetId } }, body: { file }, bodySerializer: multipart })),
   preview: async (draftId: string, volumeUnit: string, minutePosition?: string, exchange?: string) => unwrap(await client.POST('/api/market/drafts/{draft_id}/preview', { params: { path: { draft_id: draftId }, header: { 'X-Lightning-Token': token } }, body: { volume_unit: volumeUnit, minute_position: minutePosition, exchange } })),
   compare: async (draftId: string, body: import('./openapi').components['schemas']['MarketImportChoice'], page = 1) => unwrap(await client.POST('/api/market/drafts/{draft_id}/compare', { params: { path: { draft_id: draftId }, query: { page }, header: { 'X-Lightning-Token': token } }, body })),

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.transport import (Error, Status, Strategy, StrategyDetail, Version, VersionDetail, MarketImportChoice, MarketPreviewChoice, MarketConfirmChoice, MarketSearch, MarketDraft, MarketPreview, MarketComparison, MarketResult, MarketChart, MarketVersion, MarketSource, MarketImportRecord)
+from backend.app.transport import (Error, Status, Strategy, StrategyDetail, Version, VersionDetail, MarketImportChoice, MarketPreviewChoice, MarketConfirmChoice, MarketSearch, MarketStockCandidate, MarketDraft, MarketPreview, MarketComparison, MarketResult, MarketChart, MarketVersion, MarketSource, MarketImportRecord)
 from backend.features.strategies import service
 from backend.features.strategies.package import PackageError, MAX_ZIP
 from backend.features.market_data import service as market_service
@@ -130,9 +130,13 @@ def create_app(engine: Engine, static_dir: Path | None = None, market_dir: Path 
         name, data = service.download(engine, version_id)
         return Response(data, media_type='application/octet-stream', headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name, safe='')}"})
 
+    @app.get('/api/market/stocks', response_model=list[MarketStockCandidate], operation_id='market_stock_candidates', responses=ERROR_RESPONSES)
+    def market_stock_candidates(period: str, query: str = ''):
+        return market_service.stock_candidates(engine, period, query)
+
     @app.get('/api/market/search', response_model=MarketSearch, operation_id='search_market', responses=ERROR_RESPONSES)
-    def search_market(symbol: str, period: str, from_date: str, to_date: str, market: str | None = None):
-        return market_service.search(engine, market_store, symbol, period, from_date, to_date, market)
+    def search_market(symbol: str, period: str, from_date: str, to_date: str, market: str | None = None, exchange: str | None = None):
+        return market_service.search(engine, market_store, symbol, period, from_date, to_date, market, exchange)
 
     @app.get('/api/market/sources', response_model=list[MarketSource], operation_id='market_sources', responses=ERROR_RESPONSES)
     def market_sources():
