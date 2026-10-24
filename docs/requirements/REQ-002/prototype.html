@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Lightning · 历史数据</title>
+  <style>
+    :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #193044; background: #f5f7f8; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #82c8c0; outline-offset: 2px; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 205px minmax(0, 1fr); }
+    aside { background: #193345; color: #fff; padding: 27px 13px; }
+    .brand { padding: 0 14px 29px; font-size: 21px; font-weight: 750; }
+    nav { display: grid; gap: 4px; }
+    nav a { border-radius: 8px; color: #bdd0d8; text-decoration: none; padding: 12px 14px; }
+    nav a:hover, nav a.active { color: #fff; background: #315263; }
+    nav a.active { font-weight: 700; }
+    main { width: 100%; max-width: 1120px; margin: 0 auto; padding: 34px 38px 60px; align-self: start; }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 23px; }
+    .page-head h1 { font-size: 26px; margin: 0 0 6px; }
+    .page-head p { margin: 0; font-size: 14px; color: #6b7f8b; line-height: 1.5; }
+    .head-actions, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+    .btn { min-height: 39px; border: 1px solid #c6d4db; border-radius: 8px; padding: 9px 14px; color: #26495a; background: #fff; white-space: nowrap; }
+    .btn:hover { border-color: #49988d; }
+    .btn.primary { color: #fff; background: #0b786e; border-color: #0b786e; font-weight: 650; }
+    .btn.primary:hover { background: #08665e; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .card { background: #fff; border: 1px solid #dce5e9; border-radius: 11px; padding: 23px; margin-bottom: 16px; box-shadow: 0 2px 8px #17344707; }
+    .card h2 { font-size: 17px; margin: 0 0 15px; }
+    .muted { color: #6c808a; }
+    .small { font-size: 13px; line-height: 1.6; }
+    .empty { padding: 42px 18px; text-align: center; }
+    .empty h2 { margin: 0 0 8px; }
+    .empty p { max-width: 440px; margin: 0 auto 22px; color: #6c808a; line-height: 1.6; }
+    .item { background: #fff; border: 1px solid #dce5e9; border-radius: 10px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .item h2 { font-size: 17px; margin: 0 0 7px; }
+    .item p { color: #6c808a; font-size: 13px; line-height: 1.55; margin: 0; }
+    .pill { display: inline-block; border-radius: 20px; background: #e6f2ef; color: #1d6c61; padding: 4px 9px; font-size: 12px; font-weight: 500; }
+    .pill.warn { color: #935b13; background: #fff2dd; }
+    .pill.gray { color: #687e89; background: #edf1f3; }
+    .two-col { display: grid; grid-template-columns: minmax(210px, .8fr) minmax(0, 1.5fr); gap: 16px; align-items: start; }
+    .stack { display: grid; gap: 9px; }
+    .version-option { width: 100%; border: 1px solid #dce5e9; background: #fff; color: #193044; text-align: left; border-radius: 8px; padding: 12px; line-height: 1.5; }
+    .version-option.active { border-color: #0b786e; box-shadow: inset 3px 0 #0b786e; }
+    .version-option span { display: block; font-size: 12px; color: #70838d; }
+    dl { display: grid; grid-template-columns: 104px 1fr; gap: 11px 13px; margin: 0; font-size: 14px; }
+    dt { color: #71848e; } dd { margin: 0; overflow-wrap: anywhere; }
+    hr { border: 0; border-top: 1px solid #e5ecef; margin: 21px 0; }
+    .field { margin-bottom: 18px; }
+    .field label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 650; }
+    .field label em { color: #ad4538; font-style: normal; }
+    .field input, .field select { display: block; width: 100%; min-height: 40px; border: 1px solid #b8c9d2; border-radius: 7px; background: #fff; color: #193044; padding: 9px 11px; }
+    .field input[type=file] { padding: 8px; }
+    .field input[type=checkbox] { width: auto; min-height: 0; margin: 0 7px 0 0; }
+    .field label.checkbox { display: flex; align-items: flex-start; font-weight: 400; line-height: 1.5; }
+    .hint { color: #71848e; font-size: 12px; margin: 6px 0 0; }
+    .field-error { color: #b04437; font-size: 12px; margin: 6px 0 0; }
+    .message { margin-bottom: 18px; padding: 11px 14px; border-radius: 8px; font-size: 13px; line-height: 1.55; }
+    .message.success { background: #eaf7ef; color: #246443; border: 1px solid #b9dec6; }
+    .message.error { background: #fff0ee; color: #983c30; border: 1px solid #ecc0b8; }
+    .message.info { background: #edf5f8; color: #355f73; border: 1px solid #c9dce5; }
+    .message.warn { background: #fff7e9; color: #805113; border: 1px solid #ead3a8; }
+    .issue { padding: 12px 0; border-bottom: 1px solid #e8edef; font-size: 13px; line-height: 1.55; }
+    .issue:last-child { border: 0; }
+    .issue strong { display: block; }
+    details summary { color: #0b786e; cursor: pointer; font-size: 13px; font-weight: 650; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .back { margin-bottom: 16px; }
+    .search-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
+    .search-grid .field { margin-bottom: 12px; }
+    .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .result-head h2 { margin-bottom: 5px; }
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mini-table th, .mini-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e7eef1; vertical-align: top; }
+    .mini-table th { color: #657b86; font-weight: 600; background: #f8fafb; }
+    .mini-table tr:last-child td { border-bottom: 0; }
+    .inline-links { display: flex; gap: 14px; flex-wrap: wrap; }
+    .inline-links a { color: #0b786e; font-size: 13px; }
+    .wide-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 18px; }
+    .number { font-variant-numeric: tabular-nums; }
+    .chart-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 14px; margin-bottom: 15px; }
+    .chart-toolbar .field { min-width: 190px; margin: 0; }
+    .chart-wrap { overflow-x: auto; border: 1px solid #e0e9ec; border-radius: 9px; background: #fff; }
+    .chart-wrap svg { display: block; width: 100%; min-width: 660px; }
+    .chart-point { cursor: pointer; }
+    .chart-point:focus-visible { outline: 3px solid #0b786e; outline-offset: -3px; }
+    .chart-detail { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: #f5f8f9; font-size: 13px; line-height: 1.6; }
+    .chart-detail strong { display: block; margin-bottom: 3px; }
+    .status-line { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 14px 0; font-size: 13px; }
+    .status-line span { white-space: nowrap; }
+    .status-line .warn { color: #935b13; font-weight: 650; }
+    .status-line.warn { color: #935b13; font-weight: 650; }
+    .result-meta { margin: 4px 0 0; color: #6c808a; font-size: 13px; }
+    .coverage-note { margin: 13px 0 0; font-size: 14px; }
+    .anomaly-note { margin: 8px 0 0; color: #935b13; font-size: 13px; font-weight: 650; }
+    .table-scroll { max-height: 360px; overflow: auto; }
+    .detail-section h3 { font-size: 14px; margin: 17px 0 8px; }
+    .chart-legend { margin: 8px 0 0; font-size: 12px; color: #647b86; }
+    .chart-legend b { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 12px; border-radius: 2px; }
+    .chart-legend b:first-child { margin-left: 0; }
+    .detail-section { margin-top: 13px; border-top: 1px solid #e5ecef; padding-top: 13px; }
+    .detail-section summary { font-size: 14px; }
+    .detail-section .mini-table { margin-top: 12px; }
+    .changed-value { color: #9d4b11; font-weight: 700; }
+    .source-name { font-weight: 650; color: #193044; }
+    .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 0 0 22px; }
+    .summary-grid div { min-width: 0; }
+    .summary-grid dt { color: #71848e; font-size: 12px; }
+    .summary-grid dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+    @media (max-width: 960px) { .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 800px) { .app { grid-template-columns: 1fr; align-content: start; } aside { padding: 10px 16px; } .brand { padding: 5px 3px 12px; } nav { display: flex; overflow-x: auto; } nav a { white-space: nowrap; } main { padding: 24px 18px 50px; } .two-col, .form-grid, .summary-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .page-head, .item { flex-direction: column; align-items: stretch; } .search-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">Lightning</div>
+      <nav aria-label="主导航">
+        <a href="../REQ-001/prototype.html">策略</a>
+        <a class="active" href="./prototype.html" aria-current="page">历史数据</a>
+      </nav>
+    </aside>
+    <main id="main" aria-live="polite"></main>
+  </div>
+  <script>
+    // 只演示页面交互。示例数据和上传结果保存在当前浏览器页面内。
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const qs = new URLSearchParams(location.search);
+    const demoDays = ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
+    const bar = (symbol, exchange, time, values, batch) => ({ symbol, exchange, time, values, batch });
+    const batches = {
+      B001: { file: 'a_daily_20_21.csv', imported: '2026-10-21 18:00', checksum: 'a4168c21' },
+      B002: { file: 'a_daily_23.csv', imported: '2026-10-23 18:00', checksum: 'f22017ab' },
+      B003: { file: 'a_minute_20.csv', imported: '2026-10-20 17:00', checksum: '6c21b782' },
+      B004: { file: 'a_minute_add.csv', imported: '2026-10-22 10:20', checksum: '8f34c912' },
+      B005: { file: 'us_daily.csv', imported: '2026-10-22 18:00', checksum: 'c1e904ad' }
+    };
+    const aDaily1 = [
+      bar('600519', 'SH', '2026-10-20', [1680, 1690, 1670, 1682, 320000], 'B001'),
+      bar('600519', 'SH', '2026-10-21', [1682, 1692, 1678, 1688, 290000], 'B001'),
+      bar('000001', 'SZ', '2026-10-20', [11, 11.3, 10.9, 11.2, 620000], 'B001')
+    ];
+    const aMinute1 = [
+      bar('600519', 'SH', '2026-10-20 09:31', [1680, 1682, 1679, 1681, 3200], 'B003'),
+      bar('600519', 'SH', '2026-10-20 09:32', [1681, 1683, 1680, 1682, 2800], 'B003')
+    ];
+    const seed = [
+      { id: 'D001', sourceId: 'S001', source: '示例提供方 A／股票日线', market: 'A 股', interval: '日线', price: '未复权', session: '常规时段', versions: [
+        { id: 'V001', created: '2026-10-21 18:00', basedOn: '首次导入', rows: aDaily1, issues: [] },
+        { id: 'V002', created: '2026-10-23 18:00', basedOn: 'V001', rows: [...aDaily1, bar('600519', 'SH', '2026-10-23', [1690, 1720, 1684, 1712, 510000], 'B002')], issues: [{ symbol: '600519', time: '2026-10-23', text: '成交量由 29 万股升至 51 万股' }] }
+      ] },
+      { id: 'D002', sourceId: 'S002', source: '示例提供方 A／股票分钟行情', market: 'A 股', interval: '1 分钟线', price: '未复权', session: '常规时段', versions: [
+        { id: 'V001', created: '2026-10-20 17:00', basedOn: '首次导入', rows: aMinute1, issues: [] },
+        { id: 'V002', created: '2026-10-22 10:20', basedOn: 'V001', rows: [...aMinute1, bar('600519', 'SH', '2026-10-20 09:34', [1682, 1684, 1680, 1683, 3100], 'B004')], issues: [] }
+      ] },
+      { id: 'D003', sourceId: 'S003', source: '示例提供方 B／美股日线', market: '美股', interval: '日线', price: '未复权', session: '常规时段', versions: [
+        { id: 'V001', created: '2026-10-22 18:00', basedOn: '首次导入', rows: [bar('AAPL', 'NASDAQ', '2026-10-20', [250, 254, 248, 252, 1800000], 'B005')], issues: [] }
+      ] }
+    ];
+    const initialFilters = { market: 'A 股', interval: '日线', symbol: '600519', from: '2026-10-20', to: '2026-10-23' };
+    const state = { datasets: qs.has('empty') ? [] : seed, page: 'list', filters: initialFilters, searchDirty: false, selectedId: 'D001', selectedVersion: 'V002', chartDay: null, chartOffset: 0, chartSelection: null, chartSegment: null, reviewPage: 0, uploadTarget: null, pending: null, result: null, message: null };
+    const main = document.getElementById('main');
+    const selectedDataset = () => state.datasets.find(d => d.id === state.selectedId);
+    const latest = d => d.versions.at(-1);
+    const selectedVersion = () => selectedDataset()?.versions.find(v => v.id === state.selectedVersion);
+    const identity = d => [d.sourceId, d.market, d.interval, d.price, d.adjustmentMethod || '', d.adjustmentBase || '', d.session].join('|');
+    const button = (label, action, id = '', primary = false) => `<button type="button" class="btn${primary ? ' primary' : ''}" data-action="${action}" data-id="${esc(id)}">${esc(label)}</button>`;
+    const head = (title, subtitle = '', actions = '') => `<div class="page-head"><div><h1>${esc(title)}</h1>${(Array.isArray(subtitle) ? subtitle : [subtitle]).filter(Boolean).map(line => `<p>${esc(line)}</p>`).join('')}</div><div class="head-actions">${actions}</div></div>`;
+    const priceLabel = d => d.price === '未复权' ? '未按分红、拆股调整' : `${d.price}价格`;
+    const providerName = d => d.source.split('／')[0];
+    const sourceDisplay = d => state.datasets.filter(x => x.market === d.market && x.interval === d.interval && providerName(x) === providerName(d)).length > 1 ? d.source : providerName(d);
+    const symbolMarket = symbol => /^\d{6}$/.test(symbol) ? 'A 股' : /^[A-Z.]{1,8}$/.test(symbol) ? '美股' : '';
+    const isWeekend = day => [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+    const savedSpan = rows => { const times = rows.map(r => r.time).sort(); return times.length ? `${times[0]}${times.length > 1 ? ` ～ ${times.at(-1)}` : ''}` : ''; };
+    const keyOf = r => `${r.symbol}|${r.exchange}|${r.time}`;
+    const inRange = (time, f) => time.slice(0, 10) >= f.from && time.slice(0, 10) <= f.to && (!f.segment || f.interval === '日线' || (time.slice(11) >= f.minuteFrom && time.slice(11) <= f.minuteTo));
+    const matchingRows = (v, f) => v.rows.filter(r => r.symbol.toUpperCase() === f.symbol.toUpperCase() && inRange(r.time, f));
+    const inferExchange = (symbol, market) => market === 'A 股' ? (/^6/.test(symbol) ? 'SH' : /^[03]/.test(symbol) ? 'SZ' : /^[48]/.test(symbol) ? 'BJ' : '') : '';
+    function slotsFor(f) {
+      const days = demoDays.filter(day => day >= f.from && day <= f.to);
+      if (!days.length || f.from < demoDays[0] || f.to > demoDays.at(-1) || f.market !== 'A 股') return [];
+      if (f.interval === '日线') return days;
+      if (!f.segment) return [];
+      const [sh, sm] = f.minuteFrom.split(':').map(Number), [eh, em] = f.minuteTo.split(':').map(Number);
+      const start = sh * 60 + sm, end = eh * 60 + em;
+      if (end < start) return [];
+      const inSession = minute => f.market === 'A 股'
+        ? (minute >= 9 * 60 + 30 && minute < 11 * 60 + 30) || (minute >= 13 * 60 && minute < 15 * 60)
+        : minute >= 9 * 60 + 30 && minute < 16 * 60;
+      const minutes = Array.from({ length: end - start + 1 }, (_, n) => start + n).filter(inSession);
+      return days.flatMap(day => minutes.map(minute => `${day} ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`));
+    }
+    function coverage(v, f) {
+      const rows = matchingRows(v, f), found = new Set(rows.map(r => r.time));
+      let slots = slotsFor(f);
+      if (f.segment && rows.length) {
+        const times = rows.map(r => r.time).sort();
+        slots = slots.filter(s => s >= times[0] && s <= times.at(-1));
+      }
+      if (f.segment && !rows.length) slots = [];
+      const covered = slots.filter(s => found.has(s));
+      return { rows, slots, covered, missing: slots.filter(s => !found.has(s)), unknown: !slots.length };
+    }
+    function chartDays(v, f) {
+      return [...new Set([...demoDays.filter(day => day >= f.from && day <= f.to), ...matchingRows(v, f).map(r => r.time.slice(0, 10))])].sort();
+    }
+    function candleChart(c, f, issues) {
+      const slots = c.unknown ? c.rows.map(r => r.time).sort() : c.slots;
+      if (!slots.length) return '<div class="message info">所选范围没有保存的行情。可换个日期或导入文件。</div>';
+      const pageSize = 48;
+      state.chartOffset = Math.min(state.chartOffset, Math.max(0, Math.ceil(slots.length / pageSize) - 1));
+      const start = state.chartOffset * pageSize, visible = slots.slice(start, start + pageSize);
+      const rows = new Map(c.rows.map(r => [r.time, r]));
+      const chartRows = visible.map(s => rows.get(s)).filter(Boolean);
+      const prices = chartRows.flatMap(r => r.values.slice(0, 4));
+      const low = Math.min(...prices), high = Math.max(...prices);
+      const pad = Math.max((high - low) * .12, high * .004, 1);
+      const min = Number.isFinite(low) ? low - pad : 0, max = Number.isFinite(high) ? high + pad : 1;
+      const maxVolume = Math.max(1, ...chartRows.map(r => r.values[4]));
+      const width = Math.max(660, visible.length * 23 + 96), left = 58, right = width - 22, step = (right - left) / visible.length;
+      const priceY = n => 32 + (max - n) / (max - min) * 195;
+      const volumeY = n => 310 - n / maxVolume * 60;
+      const up = f.market === 'A 股' ? '#cf5546' : '#188b68', down = f.market === 'A 股' ? '#188b68' : '#cf5546';
+      const marks = visible.map((slot, index) => {
+        const x = left + step * (index + .5), r = rows.get(slot), selected = state.chartSelection === slot;
+        const label = f.interval === '日线' ? slot.slice(5) : slot.slice(11);
+        const showLabel = visible.length <= 12 || index % Math.ceil(visible.length / 10) === 0 || index === visible.length - 1;
+        const issue = issues.some(i => i.time === slot);
+        const axis = showLabel ? `<text x="${x}" y="338" text-anchor="middle" fill="#6c808a" font-size="11">${esc(label)}</text>` : '';
+        if (!r) return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 无行情" data-action="chart-point" data-id="${esc(slot)}"><rect x="${x - step * .36}" y="30" width="${step * .72}" height="280" fill="${selected ? '#e7eef1' : '#f8fafb'}" stroke="#b8c9d2" stroke-dasharray="3 3"/>${axis}<title>${esc(slot)}：无行情</title></g>`;
+        const [open, hi, lo, close, volume] = r.values, color = close >= open ? up : down;
+        const top = Math.min(priceY(open), priceY(close)), bodyHeight = Math.max(3, Math.abs(priceY(open) - priceY(close)));
+        return `<g class="chart-point" tabindex="0" role="button" aria-label="${esc(slot)} 开盘${open} 收盘${close} 成交量${volume}${issue ? ' 有数据异常提示' : ''}" data-action="chart-point" data-id="${esc(slot)}"><line x1="${x}" y1="${priceY(hi)}" x2="${x}" y2="${priceY(lo)}" stroke="${color}" stroke-width="2"/><rect x="${x - Math.min(8, step * .28)}" y="${top}" width="${Math.min(16, step * .56)}" height="${bodyHeight}" fill="${color}" stroke="${selected ? '#193044' : color}" stroke-width="${selected ? 2 : 1}"/><rect x="${x - Math.min(8, step * .28)}" y="${volumeY(volume)}" width="${Math.min(16, step * .56)}" height="${310 - volumeY(volume)}" fill="${color}" opacity=".68"/>${issue ? `<circle cx="${x}" cy="18" r="6" fill="#df9a36"/>` : ''}${axis}<rect x="${x - step * .36}" y="10" width="${step * .72}" height="300" fill="transparent"/><title>${esc(slot)}：开${open} 高${hi} 低${lo} 收${close} 量${volume}${issue ? '；有数据异常提示' : ''}</title></g>`;
+      }).join('');
+      const grid = [0, .5, 1].map(t => {
+        const y = 32 + 195 * t, value = max - (max - min) * t;
+        return `<line x1="48" y1="${y}" x2="${right}" y2="${y}" stroke="#e8edef"/><text x="43" y="${y + 4}" text-anchor="end" fill="#6c808a" font-size="11">${value.toFixed(1)}</text>`;
+      }).join('');
+      const chosen = state.chartSelection, selectedRow = rows.get(chosen), selectedIssue = issues.filter(i => i.time === chosen);
+      const detail = chosen && visible.includes(chosen)
+        ? selectedRow
+          ? `<strong>${esc(chosen)} · 开 ${selectedRow.values[0]} / 高 ${selectedRow.values[1]} / 低 ${selectedRow.values[2]} / 收 ${selectedRow.values[3]} / 量 ${selectedRow.values[4]}</strong>${selectedIssue.length ? esc(selectedIssue.map(i => i.text).join('；')) : ''}`
+          : `<strong>${esc(chosen)} · 无行情</strong>`
+        : '';
+      return `${slots.length > pageSize ? `<div class="chart-toolbar"><p class="small muted">${state.chartOffset + 1} / ${Math.ceil(slots.length / pageSize)} 段</p><div class="actions"><button type="button" class="btn" data-action="chart-prev" ${start === 0 ? 'disabled' : ''}>上一段</button><button type="button" class="btn" data-action="chart-next" ${start + pageSize >= slots.length ? 'disabled' : ''}>下一段</button></div></div>` : ''}<div class="chart-wrap"><svg width="${width}" height="352" viewBox="0 0 ${width} 352" role="img" aria-label="${esc(f.symbol)} 的 K 线和成交量；无行情的时间留空"><text x="12" y="20" fill="#6c808a" font-size="11">价格</text>${grid}<line x1="48" y1="310" x2="${right}" y2="310" stroke="#cbd9de"/><text x="12" y="283" fill="#6c808a" font-size="11">量</text>${marks}</svg></div><p class="chart-legend"><b style="background:${up}"></b>涨或平 <b style="background:${down}"></b>跌 ${c.missing.length ? '<b style="background:#f8fafb;border:1px dashed #b8c9d2"></b>无行情 ' : ''}${issues.length ? '<b style="background:#df9a36"></b>异常提示 ' : ''}· 点击 K 线看数值</p>${detail ? `<div class="chart-detail" role="status">${detail}</div>` : ''}`;
+    }
+    function searchForm() {
+      const f = state.filters;
+      const suggestions = [...new Set(state.datasets.flatMap(d => latest(d).rows.map(r => r.symbol)))];
+      return `<section class="card"><h2>查找行情</h2><form id="search-form"><div class="search-grid">
+        <div class="field"><label for="symbol">股票代码</label><input id="symbol" name="symbol" value="${esc(f.symbol)}" list="saved-symbols" placeholder="例如 600519 或 AAPL" required><datalist id="saved-symbols">${suggestions.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        <div class="field"><label for="interval">行情周期</label><select id="interval" name="interval"><option ${f.interval === '日线' ? 'selected' : ''}>日线</option><option ${f.interval === '1 分钟线' ? 'selected' : ''}>1 分钟线</option></select></div>
+        <div class="field"><label for="from">开始日期</label><input id="from" name="from" type="date" value="${esc(f.from)}" required></div>
+        <div class="field"><label for="to">结束日期</label><input id="to" name="to" type="date" value="${esc(f.to)}" required></div>
+      </div><div id="market-choice" class="field" ${symbolMarket(f.symbol) ? 'hidden' : ''}><label for="market">市场</label><select id="market" name="market"><option value="">请选择</option><option ${f.market === 'A 股' ? 'selected' : ''}>A 股</option><option ${f.market === '美股' ? 'selected' : ''}>美股</option></select></div><p id="search-error" class="field-error" role="alert"></p><div class="wide-actions"><button class="btn primary" type="submit">查找数据</button></div></form></section>`;
+    }
+    function listPage() {
+      const f = state.filters;
+      if (!state.datasets.length) return head('历史数据') + `<section class="card empty"><h2>还没有历史行情</h2>${button('导入文件', 'upload-new', '', true)}</section>`;
+      const matches = state.datasets.filter(d => d.market === f.market && d.interval === f.interval && latest(d).rows.some(r => r.symbol.toUpperCase() === f.symbol.toUpperCase()));
+      let results = `<section class="card empty"><h2>还没有 ${esc(f.symbol)} 的${f.interval === '日线' ? '日线行情' : ' 1 分钟行情'}</h2>${button('导入文件', 'upload-new', '', true)}</section>`;
+      if (matches.length) results = matches.map(d => {
+        const v = latest(d), c = coverage(v, f);
+        const issues = v.issues.filter(i => i.symbol === f.symbol && inRange(i.time, f));
+        const title = sourceDisplay(d);
+        if (!c.rows.length) return `<section class="card"><div class="result-head"><div><h2>${esc(title)}</h2><p class="result-meta">${esc(priceLabel(d))}</p></div>${button('补充文件', 'upload-dataset', d.id, true)}</div><p class="coverage-note">所选日期没有行情</p></section>`;
+        const days = new Set(c.rows.map(r => r.time.slice(0, 10))).size;
+        const dates = c.rows.map(r => r.time.slice(0, 10)).sort();
+        const dateSpan = dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ～ ${dates.at(-1)}`;
+        const covered = d.interval === '日线' ? `已保存 ${days} 天行情 · ${dateSpan}` : `已保存 ${days} 个交易日的分钟行情 · ${dateSpan}`;
+        return `<section class="card"><div class="result-head"><div><h2>${esc(title)}</h2><p class="result-meta">${esc(priceLabel(d))}</p></div>${button('查看行情', 'open-dataset', d.id, true)}</div><p class="coverage-note">${esc(covered)}</p>${issues.length ? `<p class="anomaly-note">${esc(issues.length === 1 ? '有数据异常提示' : `${issues.length} 处数据异常提示`)}</p>` : ''}</section>`;
+      }).join('');
+      const hasData = matches.some(d => matchingRows(latest(d), f).length);
+      const weekend = !hasData && f.from === f.to && isWeekend(f.from);
+      if (weekend && matches.length) results = `<section class="card empty"><h2>所选日期是周末</h2><p>换个日期查看行情。</p></section>`;
+      return head('历史数据', '', hasData ? button('导入文件', 'upload-new') : '') + searchForm() + `<div id="search-results" ${state.searchDirty ? 'hidden' : ''}><h2>查找结果</h2>${results}</div>`;
+    }
+    function segments(market) {
+      return market === 'A 股' ? [['09:30', '10:00'], ['10:00', '11:30'], ['13:00', '15:00']] : [['09:30', '10:30'], ['10:30', '12:00'], ['12:00', '14:00'], ['14:00', '16:00']];
+    }
+    function importRecords(v) {
+      const ids = [...new Set(v.rows.map(r => r.batch))];
+      return ids.map(id => { const b = batches[id]; return `<tr><td>${esc(b?.file || id)}</td><td>${esc(b?.imported || '')}</td></tr>`; }).join('');
+    }
+    function detailPage() {
+      const d = selectedDataset(), v = selectedVersion();
+      if (!d || !v) return listPage();
+      const f = { ...state.filters, market: d.market, interval: d.interval };
+      const days = d.interval === '1 分钟线' ? chartDays(v, f) : [];
+      if (days.length && !days.includes(state.chartDay)) state.chartDay = days[0];
+      const choices = segments(d.market);
+      if (!choices.some(s => s.join('-') === state.chartSegment)) state.chartSegment = choices[0].join('-');
+      const [minuteFrom, minuteTo] = state.chartSegment.split('-');
+      const scoped = d.interval === '1 分钟线' && days.length ? { ...f, from: state.chartDay, to: state.chartDay, minuteFrom, minuteTo, segment: true } : f;
+      const c = coverage(v, scoped);
+      const issues = v.issues.filter(i => i.symbol === f.symbol && inRange(i.time, scoped));
+      const versions = [...d.versions].reverse().map(x => `<option value="${esc(x.id)}" ${x.id === v.id ? 'selected' : ''}>${x.id === latest(d).id ? `最新（${esc(x.id)}）` : esc(x.id)}</option>`).join('');
+      const scope = `${scoped.from}${scoped.to !== scoped.from ? ` ～ ${scoped.to}` : ''}`;
+      return head(`${f.symbol} · ${d.interval}`, [`来源：${sourceDisplay(d)}`, `价格：${priceLabel(d)}`], button('返回查找', 'list') + button('补充或修正', 'upload-existing')) +
+        `<section class="card">
+          <div class="chart-toolbar">
+            <div><h2>K 线与成交量</h2><p class="result-meta">${esc(scope)}</p></div>
+            <div class="actions"><div class="field"><label for="version-select">版本</label><select id="version-select">${versions}</select></div>
+            ${days.length ? `<div class="field"><label for="chart-day">日期</label><select id="chart-day">${days.map(day => `<option value="${esc(day)}" ${day === state.chartDay ? 'selected' : ''}>${esc(day)}</option>`).join('')}</select></div><div class="field"><label for="chart-segment">时段</label><select id="chart-segment">${choices.map(s => { const value = s.join('-'); return `<option value="${value}" ${value === state.chartSegment ? 'selected' : ''}>${value}</option>`; }).join('')}</select></div>` : ''}</div>
+          </div>
+          ${issues.length ? `<p class="anomaly-note">${esc(issues.length === 1 ? '有数据异常提示' : `${issues.length} 处数据异常提示`)} · 点击标记查看</p>` : ''}
+          ${candleChart(c, scoped, issues)}
+          <details class="detail-section"><summary>导入记录</summary>
+            <p class="small muted">来源：${esc(d.source)}</p><p class="small muted">${esc(v.id)} ${v.basedOn === '首次导入' ? '首次导入' : `基于 ${esc(v.basedOn)}`}</p>
+            <table class="mini-table"><thead><tr><th>文件</th><th>导入时间</th></tr></thead><tbody>${importRecords(v)}</tbody></table>
+          </details>
+        </section>`;
+    }
+    function uploadPage() {
+      const d = state.datasets.find(x => x.id === state.uploadTarget);
+      return head('导入行情', d ? `补充到：${sourceDisplay(d)} · ${d.interval}` : '', button('返回', d ? 'detail' : 'list')) +
+        `<section class="card" style="max-width:760px"><div class="field"><label for="data-file">选择 CSV 文件</label><input id="data-file" name="dataFile" type="file" accept=".csv,text/csv"></div><p id="file-status" class="small muted" role="status"></p><p id="file-error" class="field-error" role="alert"></p><div id="wrong-target-action" hidden>${button('按文件另行导入', 'detach-target')}</div><details class="detail-section"><summary>查看格式和样本</summary><p class="small muted">文件需包含股票、时间、开高低收和成交量。分钟时间须带时区。</p><div class="inline-links"><a href="./samples/new-daily.csv">日线样本</a><a href="./samples/new-minutes.csv">分钟样本</a></div></details></section>`;
+    }
+    function previewPage() {
+      const p = state.pending;
+      if (!p) return uploadPage();
+      const d = state.datasets.find(x => x.id === state.uploadTarget);
+      const market = d?.market || p.inferredMarket || '';
+      const sources = [...new Map(state.datasets.filter(x => x.market === market).map(x => [x.sourceId, { id: x.sourceId, name: x.source }])).values()];
+      const exchangeChoices = market === 'A 股' ? ['SH', 'SZ', 'BJ'] : market === '美股' ? ['NASDAQ', 'NYSE', 'AMEX'] : [];
+      const needsExchange = p.rawRows.some(r => !r.exchange && !inferExchange(r.symbol, market));
+      const symbols = [...new Set(p.rawRows.map(r => {
+        const exchange = r.exchange || inferExchange(r.symbol, market);
+        return `${r.symbol}${exchange ? `（${exchange}）` : ''}`;
+      }))].join('、');
+      const times = p.rawRows.map(r => r.rawTime).sort();
+      const displayTime = raw => p.interval === '日线' ? raw : `${raw.slice(0, 10)} ${raw.slice(11, 16)} ${raw.endsWith('Z') ? 'UTC' : raw.slice(-6)}`;
+      return head('核对导入', '', button('重新选择文件', 'upload-back')) +
+        `<section class="card" style="max-width:850px">
+          <h2>文件内容</h2><dl class="summary-grid"><div><dt>文件</dt><dd>${esc(p.fileName)}</dd></div><div><dt>行情</dt><dd>${market ? `${esc(market)} · ` : ''}${esc(p.interval)}</dd></div><div><dt>股票</dt><dd>${esc(symbols)} · ${p.rawRows.length} 条</dd></div><div><dt>文件时间</dt><dd>${esc(displayTime(times[0]))}${times[0] === times.at(-1) ? '' : ` ～ ${esc(displayTime(times.at(-1)))}`}</dd></div></dl>
+          <form id="confirm-form">
+            ${d ? `<div class="message info"><div>导入到：${esc(d.source)}</div><div>价格：${esc(priceLabel(d))}</div></div>` : `
+              <h2>数据归属</h2>
+              <div class="form-grid"><div class="field"><label for="source-choice">数据来源</label><select id="source-choice" name="sourceChoice"><option value="">请选择</option>${sources.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}<option value="new">新增来源</option></select></div>
+              ${p.inferredMarket ? '' : `<div class="field"><label for="confirm-market">市场</label><select id="confirm-market" name="market"><option value="">请选择</option><option>A 股</option><option>美股</option></select></div>`}</div>`}
+            <div id="new-source-fields" class="form-grid" hidden>
+              <div class="field"><label for="provider">提供方或自有采集方</label><input id="provider" name="provider" placeholder="例如：示例提供方 C"></div>
+              <div class="field"><label for="product">数据产品或采集方式</label><input id="product" name="product" placeholder="例如：股票日线"></div>
+            </div>
+            <h2>还需确认</h2>
+            <div class="form-grid">
+              ${needsExchange ? `<div class="field"><label for="confirm-exchange">股票所属交易所</label><select id="confirm-exchange" name="exchange"><option value="">请选择</option>${exchangeChoices.map(x => `<option>${x}</option>`).join('')}</select></div>` : ''}
+              ${d ? '' : `<div class="field"><label for="price">价格是否按分红、拆股调整</label><select id="price" name="price"><option value="">请选择</option><option value="未复权">未调整</option><option value="前复权">前复权</option><option value="后复权">后复权</option></select></div>`}
+            </div>
+            ${d ? '' : `<div id="adjustment-fields" class="form-grid" hidden><div class="field"><label for="adjustment-method">复权计算方法</label><input id="adjustment-method" name="adjustmentMethod"></div><div class="field"><label for="adjustment-base">以哪天价格为参照</label><input id="adjustment-base" name="adjustmentBase" placeholder="例如：最新交易日"></div></div>`}
+            <div class="form-grid"><div class="field"><label for="volume-unit">成交量单位</label><select id="volume-unit" name="volumeUnit"><option value="">请选择</option><option value="股">股</option>${market === 'A 股' ? '<option value="手">手（每手 100 股）</option>' : ''}</select></div>
+            ${p.interval === '1 分钟线' ? `<div class="field"><label for="time-basis">文件时间表示</label><select id="time-basis" name="timeBasis"><option value="">请选择</option><option value="开始">这一分钟的开始</option><option value="结束">这一分钟的结束</option></select></div>` : ''}</div>
+            ${p.interval === '1 分钟线' ? `<p id="normalized-time" class="message info" hidden></p>` : ''}
+            <p id="confirm-error" class="field-error" role="alert"></p>
+            <div class="wide-actions"><button class="btn primary" type="submit">检查并导入</button></div>
+          </form>
+        </section>`;
+    }
+    function reviewPage() {
+      const p = state.pending;
+      if (!p?.analysis) return previewPage();
+      const a = p.analysis;
+      const labels = ['开盘价', '最高价', '最低价', '收盘价', '成交量'];
+      const pageSize = 20, pageCount = Math.ceil(a.changed.length / pageSize);
+      state.reviewPage = Math.min(state.reviewPage, pageCount - 1);
+      const changedRows = a.changed.slice(state.reviewPage * pageSize, (state.reviewPage + 1) * pageSize).map(x => {
+        const cells = x.after.values.map((value, i) => ({ value, i })).filter(cell => x.before.values[cell.i] !== cell.value);
+        return cells.map(({ value, i }, index) => `<tr>${index ? '' : `<td rowspan="${cells.length}">${esc(x.after.symbol)} · ${esc(x.after.time)}</td>`}<td>${labels[i]}</td><td class="number">${esc(x.before.values[i])}</td><td class="number changed-value">${esc(value)}</td></tr>`).join('');
+      }).join('');
+      const addedSpan = a.newRows.length ? savedSpan(a.newRows) : '';
+      return head('确认修正', '', button('返回核对', 'preview-back')) +
+        `<section class="card"><h2>将修正 ${a.changed.length} 条已有行情</h2>${a.newRows.length ? `<p class="result-meta">另新增 ${a.newRows.length} 条 · ${esc(addedSpan)}</p>` : ''}<p class="small muted">${esc(a.dataset.source)}</p><div class="table-scroll"><table class="mini-table"><thead><tr><th>股票与时间</th><th>变化项</th><th>原值</th><th>新值</th></tr></thead><tbody>${changedRows}</tbody></table></div>${pageCount > 1 ? `<div class="wide-actions">${button('上一页', 'review-prev')}<span class="small muted">${state.reviewPage + 1} / ${pageCount}</span>${button('下一页', 'review-next')}</div>` : ''}<div class="wide-actions">${button('取消修正', 'cancel-review')}${button('确认并生成新版本', 'confirm-import', '', true)}</div></section>`;
+    }
+    function resultPage() {
+      const r = state.result;
+      if (!r) return listPage();
+      if (r.duplicate) return head('没有新行情', '', button('返回查找', 'list')) +
+        `<section class="card" style="max-width:760px"><h2>未生成新版本</h2><p>文件中的行情与 ${esc(r.version.id)} 相同。</p>${r.symbols.length > 1 ? `<div class="field" style="margin-top:18px"><label for="result-symbol">查看哪只股票</label><select id="result-symbol"><option value="">请选择股票</option>${r.symbols.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>` : ''}<div class="wide-actions">${r.symbols.length > 1 ? '<button type="button" class="btn primary" data-action="result-detail" id="result-detail-button" disabled>查看已有 K 线</button>' : button('查看已有 K 线', 'result-detail', '', true)}</div></section>`;
+      const changes = [r.added ? `新增 ${r.added} 条` : '', r.changed ? `修正 ${r.changed} 条` : ''].filter(Boolean).join('，');
+      return head('导入完成', '', button('返回查找', 'list')) +
+        `<section class="card" style="max-width:760px"><h2>已生成 ${esc(r.version.id)}</h2><p>${esc(changes)}</p><p class="result-meta">涉及 ${r.symbols.length} 只股票 · ${esc(r.dateSpan)}</p>${r.symbols.length > 1 ? `<div class="field" style="margin-top:18px"><label for="result-symbol">查看哪只股票</label><select id="result-symbol"><option value="">请选择股票</option>${r.symbols.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>` : ''}<div class="wide-actions">${r.symbols.length > 1 ? '<button type="button" class="btn primary" data-action="result-detail" id="result-detail-button" disabled>查看新版 K 线</button>' : button('查看新版 K 线', 'result-detail', '', true)}</div></section>`;
+    }
+    function render() {
+      const views = { list: listPage, detail: detailPage, upload: uploadPage, preview: previewPage, review: reviewPage, result: resultPage };
+      if (!views[state.page]) state.page = 'list';
+      main.innerHTML = (state.message ? `<div class="message ${state.message.type}" role="status">${esc(state.message.text)}</div>` : '') + views[state.page]();
+      document.getElementById('search-form')?.addEventListener('submit', submitSearch);
+      const search = document.getElementById('search-form');
+      const markSearchDirty = () => {
+        state.searchDirty = true;
+        const results = document.getElementById('search-results');
+        if (results) results.hidden = true;
+      };
+      search?.addEventListener('input', markSearchDirty);
+      search?.addEventListener('change', markSearchDirty);
+      document.getElementById('data-file')?.addEventListener('change', readFile);
+      document.getElementById('result-symbol')?.addEventListener('change', event => { document.getElementById('result-detail-button').disabled = !event.target.value; });
+      document.getElementById('confirm-form')?.addEventListener('submit', confirmFile);
+      document.getElementById('symbol')?.addEventListener('input', event => {
+        const choice = document.getElementById('market-choice');
+        if (choice) choice.hidden = Boolean(symbolMarket(event.target.value.trim().toUpperCase()));
+      });
+      document.getElementById('version-select')?.addEventListener('change', event => {
+        state.selectedVersion = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+      });
+      document.getElementById('chart-day')?.addEventListener('change', event => {
+        state.chartDay = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+      });
+      document.getElementById('chart-segment')?.addEventListener('change', event => {
+        state.chartSegment = event.target.value; state.chartOffset = 0; state.chartSelection = null; render();
+      });
+      document.getElementById('source-choice')?.addEventListener('change', event => {
+        const fields = document.getElementById('new-source-fields');
+        if (fields) fields.hidden = event.target.value !== 'new';
+      });
+      document.getElementById('price')?.addEventListener('change', event => {
+        const fields = document.getElementById('adjustment-fields');
+        if (fields) fields.hidden = event.target.value === '未复权';
+      });
+      document.getElementById('confirm-market')?.addEventListener('change', event => {
+        const e = document.getElementById('confirm-exchange');
+        if (e && !e.disabled) e.innerHTML = `<option value="">请选择</option>` + (event.target.value === 'A 股' ? ['SH', 'SZ', 'BJ'] : ['NASDAQ', 'NYSE', 'AMEX']).map(x => `<option>${x}</option>`).join('');
+        const volume = document.getElementById('volume-unit');
+        if (volume) {
+          const selected = volume.value;
+          volume.innerHTML = '<option value="">请选择</option><option value="股">股</option>' + (event.target.value === 'A 股' ? '<option value="手">手（每手 100 股）</option>' : '');
+          volume.value = [...volume.options].some(option => option.value === selected) ? selected : '';
+        }
+        const source = document.getElementById('source-choice');
+        if (source) {
+          const selected = source.value;
+          const options = [...new Map(state.datasets.filter(x => x.market === event.target.value).map(x => [x.sourceId, x.source])).entries()];
+          source.innerHTML = '<option value="">请选择</option>' + options.map(([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('') + '<option value="new">新增来源</option>';
+          if ([...source.options].some(option => option.value === selected)) source.value = selected;
+          document.getElementById('new-source-fields').hidden = source.value !== 'new';
+        }
+        updateNormalizedTime();
+      });
+      document.getElementById('time-basis')?.addEventListener('change', updateNormalizedTime);
+      const confirm = document.getElementById('confirm-form'), saved = state.pending?.formValues;
+      if (confirm && saved) {
+        const market = document.getElementById('confirm-market');
+        if (market && !market.disabled && saved.market) { market.value = saved.market; market.dispatchEvent(new Event('change')); }
+        for (const [name, value] of Object.entries(saved)) {
+          for (const control of confirm.querySelectorAll(`[name="${name}"]`)) {
+            if (control.disabled) continue;
+            if (control.type === 'checkbox') control.checked = true;
+            else control.value = value;
+          }
+        }
+        const sourceFields = document.getElementById('new-source-fields');
+        if (sourceFields) sourceFields.hidden = saved.sourceChoice !== 'new';
+        const adjustmentFields = document.getElementById('adjustment-fields');
+        if (adjustmentFields) adjustmentFields.hidden = saved.price === '未复权';
+      }
+      updateNormalizedTime();
+    }
+    function updateNormalizedTime() {
+      const note = document.getElementById('normalized-time'), p = state.pending;
+      if (!note || !p) return;
+      const basis = document.getElementById('time-basis')?.value;
+      const market = state.datasets.find(x => x.id === state.uploadTarget)?.market || p.inferredMarket || document.getElementById('confirm-market')?.value;
+      note.hidden = !basis || !market;
+      if (!note.hidden) {
+        const first = p.rawRows[0].rawTime, zone = market === 'A 股' ? 'Asia/Shanghai' : 'America/New_York';
+        note.textContent = `保存后的市场时间示例：${localMinute(first, zone, basis)}（文件：${first}）`;
+      }
+    }
+    function go(page) { state.page = page; state.message = null; render(); window.scrollTo(0, 0); }
+    function submitSearch(event) {
+      event.preventDefault();
+      const form = event.currentTarget, f = Object.fromEntries(new FormData(form));
+      f.symbol = (f.symbol || '').trim().toUpperCase();
+      const error = document.getElementById('search-error');
+      if (f.from > f.to) return error.textContent = '结束日期不能早于开始日期。';
+      f.market = symbolMarket(f.symbol) || f.market;
+      if (!f.market) return error.textContent = '请选择股票所属市场。';
+      state.filters = { ...initialFilters, ...f }; state.searchDirty = false; go('list');
+    }
+    function parseCsv(text) {
+      const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/).filter(Boolean);
+      const header = (lines.shift() || '').split(',').map(x => x.trim().toLowerCase());
+      const withExchange = header[1] === 'exchange';
+      const kind = header[withExchange ? 2 : 1];
+      const expected = ['symbol', ...(withExchange ? ['exchange'] : []), kind, 'open', 'high', 'low', 'close', 'volume'];
+      if (!['date', 'timestamp'].includes(kind) || header.join(',') !== expected.join(',')) throw new Error('文件列不支持。请展开“格式与样本”查看示例。');
+      if (!lines.length) throw new Error('文件没有行情记录。');
+      const seen = new Map();
+      const rawRows = lines.map((line, index) => {
+        const cols = line.split(',').map(x => x.trim());
+        if (cols.length !== expected.length || !cols[0] || !cols[withExchange ? 2 : 1]) throw new Error(`第 ${index + 2} 行缺少股票或时间。`);
+        const symbol = cols[0].toUpperCase(), exchange = withExchange ? cols[1].toUpperCase() : '';
+        if (withExchange && !exchange) throw new Error(`第 ${index + 2} 行缺少交易所。`);
+        const rawTime = cols[withExchange ? 2 : 1];
+        if (kind === 'date') {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(rawTime) || Number.isNaN(Date.parse(`${rawTime}T00:00:00Z`)) || new Date(`${rawTime}T00:00:00Z`).toISOString().slice(0, 10) !== rawTime) throw new Error(`第 ${index + 2} 行的交易日期无效。`);
+        } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:(?:\d{2})(?:Z|[+-]\d{2}:\d{2})$/.test(rawTime) || Number.isNaN(Date.parse(rawTime))) throw new Error(`第 ${index + 2} 行需要带时区偏移的分钟时间。`);
+        const rawValues = cols.slice(withExchange ? 3 : 2), values = rawValues.map(Number);
+        const names = ['开盘价', '最高价', '最低价', '收盘价', '成交量'];
+        const problems = rawValues.flatMap((value, i) => !value || !Number.isFinite(values[i]) ? [`${names[i]}缺失或不是数字`] : []);
+        if (problems.length) throw new Error(`第 ${index + 2} 行：${problems.join('；')}。`);
+        const [open, high, low, close, volume] = values;
+        if ([open, high, low, close].some(x => x <= 0)) problems.push('价格必须大于 0');
+        if (high < low) problems.push('最高价低于最低价');
+        else {
+          if (high < Math.max(open, close)) problems.push('最高价低于开盘价或收盘价');
+          if (low > Math.min(open, close)) problems.push('最低价高于开盘价或收盘价');
+        }
+        if (volume < 0) problems.push('成交量不能为负');
+        if (problems.length) throw new Error(`第 ${index + 2} 行：${problems.join('；')}。`);
+        const key = `${symbol}|${exchange}|${rawTime}`, old = seen.get(key);
+        if (old && old !== values.join(',')) throw new Error(`第 ${index + 2} 行与同一时间的其他记录冲突。`);
+        seen.set(key, values.join(','));
+        return { symbol, exchange, rawTime, values, line: index + 2 };
+      });
+      return { interval: kind === 'date' ? '日线' : '1 分钟线', rawRows: rawRows.filter((r, i) => rawRows.findIndex(x => x.symbol === r.symbol && x.exchange === r.exchange && x.rawTime === r.rawTime) === i) };
+    }
+    function guessMarket(rows) {
+      if (rows.every(r => /^\d{6}$/.test(r.symbol))) return 'A 股';
+      if (rows.every(r => /^[A-Z.]{1,8}$/.test(r.symbol))) return '美股';
+      return null;
+    }
+    function simpleChecksum(text) {
+      let hash = 2166136261;
+      for (const ch of text) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619);
+      return (hash >>> 0).toString(16).padStart(8, '0');
+    }
+    async function readFile(event) {
+      const file = event.currentTarget.files[0], error = document.getElementById('file-error');
+      error.textContent = '';
+      document.getElementById('wrong-target-action').hidden = true;
+      state.pending = null;
+      if (!file || !file.size || !file.name.toLowerCase().endsWith('.csv')) return error.textContent = '请选择非空 CSV 文件。';
+      const status = document.getElementById('file-status');
+      status.textContent = '正在读取文件…';
+      try {
+        const text = await file.text(), parsed = parseCsv(text);
+        const markets = new Set(parsed.rawRows.map(r => symbolMarket(r.symbol)).filter(Boolean));
+        if (markets.size > 1) throw new Error('文件同时包含 A 股和美股，请分开导入。');
+        const target = state.datasets.find(x => x.id === state.uploadTarget);
+        state.pending = { ...parsed, fileName: file.name, checksum: simpleChecksum(text), inferredMarket: guessMarket(parsed.rawRows) };
+        if (target && (parsed.interval !== target.interval || (state.pending.inferredMarket && state.pending.inferredMarket !== target.market))) {
+          status.textContent = '';
+          document.getElementById('wrong-target-action').hidden = false;
+          return error.textContent = `文件属于${state.pending.inferredMarket || target.market} ${parsed.interval}，与当前导入目标不一致。`;
+        }
+        go('preview');
+      } catch (err) { status.textContent = ''; error.textContent = err.message; }
+    }
+    function localMinute(raw, zone, timeBasis) {
+      const instant = new Date(Date.parse(raw) - (timeBasis === '结束' ? 60000 : 0));
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(instant).map(x => [x.type, x.value]));
+      return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+    }
+    function inRegularSession(time, market) {
+      const minute = Number(time.slice(11, 13)) * 60 + Number(time.slice(14, 16));
+      return market === 'A 股' ? (minute >= 570 && minute < 690) || (minute >= 780 && minute < 900) : minute >= 570 && minute < 960;
+    }
+    function confirmFile(event) {
+      event.preventDefault();
+      const form = event.currentTarget, p = state.pending, error = document.getElementById('confirm-error');
+      error.textContent = '';
+      const data = Object.fromEntries(new FormData(form));
+      p.formValues = data;
+      const target = state.datasets.find(x => x.id === state.uploadTarget);
+      let sourceId = target?.sourceId || data.sourceChoice;
+      const provider = (data.provider || '').trim(), product = (data.product || '').trim();
+      if (!sourceId) return error.textContent = '请选择数据来源。';
+      if (sourceId === 'new' && (!provider || !product)) return error.textContent = '请填写提供方和数据产品（或采集方式）。';
+      const enteredSource = `${provider}／${product}`;
+      const alreadyKnown = state.datasets.find(x => x.source === enteredSource);
+      if (sourceId === 'new' && alreadyKnown) sourceId = alreadyKnown.sourceId;
+      const source = sourceId === 'new' ? enteredSource : target?.source || state.datasets.find(x => x.sourceId === sourceId)?.source;
+      if (!source) return error.textContent = '请选择数据来源。';
+      const market = target?.market || p.inferredMarket || data.market;
+      if (!market) return error.textContent = '请选择市场。';
+      if (p.inferredMarket && market !== p.inferredMarket) return error.textContent = `文件中的股票代码看起来属于${p.inferredMarket}，请核对市场。`;
+      if (p.rawRows.some(r => symbolMarket(r.symbol) && symbolMarket(r.symbol) !== market)) return error.textContent = '文件中的股票不属于所选市场，请分开导入。';
+      if (!data.volumeUnit) return error.textContent = '请确认文件中的成交量单位。';
+      if (market !== 'A 股' && data.volumeUnit === '手') return error.textContent = '当前市场不支持以“手”为成交量单位。';
+      if (p.interval === '1 分钟线' && !data.timeBasis) return error.textContent = '请确认文件时间表示一分钟的开始还是结束。';
+      const timezone = market === 'A 股' ? 'Asia/Shanghai' : 'America/New_York';
+      const price = target?.price || data.price, adjustmentMethod = target?.adjustmentMethod || (price === '未复权' ? '' : (data.adjustmentMethod || '').trim()), adjustmentBase = target?.adjustmentBase || (price === '未复权' ? '' : (data.adjustmentBase || '').trim());
+      if (!price) return error.textContent = '请确认价格是否按分红、拆股调整。';
+      if (price !== '未复权' && (!adjustmentMethod || !adjustmentBase)) return error.textContent = '复权数据需说明计算方法和参照日期。';
+      const exchange = data.exchange || '', exchanges = market === 'A 股' ? ['SH', 'SZ', 'BJ'] : ['NASDAQ', 'NYSE', 'AMEX'];
+      if (p.rawRows.some(r => !r.exchange && !inferExchange(r.symbol, market) && !exchange)) return error.textContent = '请选择股票所属交易所。';
+      if (p.rawRows.some(r => !exchanges.includes(r.exchange || inferExchange(r.symbol, market) || exchange))) return error.textContent = '股票所属交易所与市场不一致。';
+      const rows = p.rawRows.map(r => bar(r.symbol, r.exchange || inferExchange(r.symbol, market) || exchange, p.interval === '日线' ? r.rawTime : localMinute(r.rawTime, timezone, data.timeBasis), [r.values[0], r.values[1], r.values[2], r.values[3], r.values[4] * (data.volumeUnit === '手' ? 100 : 1)], 'PENDING'));
+      const weekendIndex = rows.findIndex(r => isWeekend(r.time.slice(0, 10)));
+      if (weekendIndex >= 0) return error.textContent = `第 ${p.rawRows[weekendIndex].line} 行的 ${rows[weekendIndex].time.slice(0, 10)} 是周末，请核对文件日期。`;
+      const outsideIndex = rows.findIndex(r => p.interval === '1 分钟线' && !inRegularSession(r.time, market));
+      if (outsideIndex >= 0) return error.textContent = `第 ${p.rawRows[outsideIndex].line} 行换算成 ${rows[outsideIndex].time}，不在常规交易时段。`;
+      const normalized = new Map();
+      for (const row of rows) {
+        const old = normalized.get(keyOf(row));
+        if (old && old.values.join(',') !== row.values.join(',')) return error.textContent = `同一股票在 ${row.time} 有冲突记录。`;
+        normalized.set(keyOf(row), row);
+      }
+      const datasetDraft = { sourceId, source, market, interval: p.interval, price, adjustmentMethod, adjustmentBase, session: '常规时段' };
+      const existing = target || state.datasets.find(x => identity(x) === identity(datasetDraft));
+      if (target && identity(target) !== identity(datasetDraft)) return error.textContent = '文件归属与当前数据集不一致。请返回检查文件。';
+      const oldRows = new Map((existing ? latest(existing).rows : []).map(r => [keyOf(r), r]));
+      const newRows = [], changed = []; let unchanged = 0;
+      for (const row of normalized.values()) {
+        const old = oldRows.get(keyOf(row));
+        if (!old) newRows.push(row);
+        else if (old.values.join(',') === row.values.join(',')) unchanged++;
+        else changed.push({ before: old, after: row });
+      }
+      if (existing && !newRows.length && !changed.length) {
+        const dates = [...new Set(rows.map(r => r.time.slice(0, 10)))].sort();
+        state.result = { duplicate: true, dataset: existing, version: latest(existing), changedRows: rows, symbols: [...new Set(rows.map(r => r.symbol))].sort(), dateSpan: dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ～ ${dates.at(-1)}` };
+        state.selectedId = existing.id; state.selectedVersion = latest(existing).id; state.pending = null; return go('result');
+      }
+      p.analysis = { dataset: existing || datasetDraft, existing, rows: [...normalized.values()], newRows, changed, unchanged };
+      if (changed.length) { state.reviewPage = 0; go('review'); } else publish();
+    }
+    function publish() {
+      const p = state.pending, a = p?.analysis;
+      if (!a) return;
+      let d = a.existing;
+      if (!d) {
+        const sourceId = a.dataset.sourceId === 'new' ? `S${String(new Set(state.datasets.map(x => x.sourceId)).size + 1).padStart(3, '0')}` : a.dataset.sourceId;
+        d = { ...a.dataset, sourceId, id: `D${String(state.datasets.length + 1).padStart(3, '0')}`, versions: [] };
+        state.datasets.push(d);
+      }
+      const batchId = `B${String(Object.keys(batches).length + 1).padStart(3, '0')}`;
+      const imported = new Date().toLocaleString('zh-CN', { hour12: false }).replaceAll('/', '-');
+      batches[batchId] = { file: p.fileName, imported, checksum: p.checksum };
+      const previous = d.versions.length ? latest(d) : null;
+      const map = new Map((previous?.rows || []).map(r => [keyOf(r), r]));
+      for (const r of a.rows) {
+        const old = map.get(keyOf(r));
+        if (!old || old.values.join(',') !== r.values.join(',')) map.set(keyOf(r), { ...r, batch: batchId });
+      }
+      const changedTimes = new Set(a.changed.map(x => `${x.after.symbol}|${x.after.time}`));
+      const issues = (previous?.issues || []).filter(x => !changedTimes.has(`${x.symbol}|${x.time}`));
+      const v = { id: `V${String(d.versions.length + 1).padStart(3, '0')}`, created: imported, basedOn: previous?.id || '首次导入', rows: [...map.values()], issues };
+      d.versions.push(v);
+      const changedRows = [...a.newRows, ...a.changed.map(x => x.after)];
+      const dates = [...new Set(changedRows.map(r => r.time.slice(0, 10)))].sort();
+      state.result = { dataset: d, version: v, batch: batches[batchId], added: a.newRows.length, changed: a.changed.length, changedRows, symbols: [...new Set(changedRows.map(r => r.symbol))].sort(), dates, dateSpan: dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ～ ${dates.at(-1)}` };
+      state.searchDirty = false;
+      state.chartDay = null; state.chartOffset = 0; state.chartSelection = null;
+      state.selectedId = d.id; state.selectedVersion = v.id; state.pending = null; go('result');
+    }
+    document.addEventListener('click', event => {
+      const t = event.target.closest('[data-action]'); if (!t) return;
+      const action = t.dataset.action;
+      if (action === 'list') go('list');
+      else if (action === 'open-dataset') { state.selectedId = t.dataset.id; state.selectedVersion = latest(selectedDataset()).id; state.chartDay = null; state.chartOffset = 0; state.chartSelection = null; go('detail'); }
+      else if (action === 'chart-point') { state.chartSelection = t.dataset.id; render(); }
+      else if (action === 'chart-prev') { state.chartOffset = Math.max(0, state.chartOffset - 1); state.chartSelection = null; render(); }
+      else if (action === 'chart-next') { state.chartOffset++; state.chartSelection = null; render(); }
+      else if (action === 'upload-new') { state.uploadTarget = null; state.pending = null; go('upload'); }
+      else if (action === 'upload-dataset') { state.uploadTarget = t.dataset.id; state.pending = null; go('upload'); }
+      else if (action === 'upload-existing') { state.uploadTarget = state.selectedId; state.pending = null; go('upload'); }
+      else if (action === 'upload-back') { state.pending = null; go('upload'); }
+      else if (action === 'detach-target') { state.uploadTarget = null; go('preview'); }
+      else if (action === 'preview-back') { state.pending.analysis = null; go('preview'); }
+      else if (action === 'cancel-review') { state.pending = null; go(state.uploadTarget ? 'detail' : 'list'); }
+      else if (action === 'review-prev') { state.reviewPage = Math.max(0, state.reviewPage - 1); render(); }
+      else if (action === 'review-next') { state.reviewPage++; render(); }
+      else if (action === 'confirm-import') publish();
+      else if (action === 'result-detail') {
+        const r = state.result, symbol = r.symbols.length > 1 ? document.getElementById('result-symbol')?.value : r.symbols[0];
+        if (!symbol) return;
+        const times = r.changedRows.filter(x => x.symbol === symbol).map(x => x.time.slice(0, 10)).sort();
+        state.filters = { ...state.filters, market: r.dataset.market, interval: r.dataset.interval, symbol, from: times[0], to: times.at(-1) };
+        state.chartDay = null; state.chartSegment = null; state.chartSelection = null; state.chartOffset = 0;
+        go('detail');
+      }
+      else if (action === 'detail') go('detail');
+    });
+    document.addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.chart-point')) {
+        event.preventDefault(); state.chartSelection = event.target.dataset.id; render();
+      }
+    });
+    render();
+  </script>
+</body>
+</html>

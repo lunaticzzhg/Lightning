@@ -11,3 +11,4 @@ deploy/local/secrets
 deploy/test/secrets
 deploy/local/.env
 deploy/restore/secrets
+data_sources/exports

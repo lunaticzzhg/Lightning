@@ -5,16 +5,19 @@ import secrets
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import FastAPI, File, Header, Request, UploadFile
+from fastapi import FastAPI, File, Header, Request, UploadFile, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.transport import (Error, Status, Strategy, StrategyDetail, Version, VersionDetail)
+from backend.app.transport import (Error, Status, Strategy, StrategyDetail, Version, VersionDetail, MarketImportChoice, MarketPreviewChoice, MarketConfirmChoice, MarketSearch, MarketDraft, MarketPreview, MarketComparison, MarketResult, MarketChart, MarketVersion, MarketSource, MarketImportRecord)
 from backend.features.strategies import service
 from backend.features.strategies.package import PackageError, MAX_ZIP
+from backend.features.market_data import service as market_service
+from backend.features.market_data.importer import InvalidFile
+from backend.features.market_data.storage import Store, CorruptVersion
 
 
 ERROR_RESPONSES = {code: {'model': Error} for code in (400, 403, 404, 409, 422, 503)}
@@ -24,8 +27,9 @@ def error_response(code, message, status):
     return Response(content=Error(code=code, message=message).model_dump_json(), media_type='application/json', status_code=status)
 
 
-def create_app(engine: Engine, static_dir: Path | None = None):
+def create_app(engine: Engine, static_dir: Path | None = None, market_dir: Path | None = None):
     token = secrets.token_urlsafe(32)
+    market_store = Store(market_dir or Path(os.environ.get("LIGHTNING_MARKET_DIR", "/tmp/lightning-market")))
     app = FastAPI(title='Lightning management API', version='1.0.0', docs_url=None, redoc_url=None, openapi_url='/api/openapi.json')
     app.state.token = token
 
@@ -68,6 +72,23 @@ def create_app(engine: Engine, static_dir: Path | None = None):
         logging.exception('Database request failed')
         return error_response('database_unavailable', '数据服务暂不可用', 503)
 
+    @app.exception_handler(InvalidFile)
+    async def invalid_market(_request, exc):
+        return error_response("invalid_input", str(exc), 400)
+
+    @app.exception_handler(market_service.NotFound)
+    async def market_missing(_request, _exc):
+        return error_response("not_found", "记录不存在", 404)
+
+    @app.exception_handler(market_service.Conflict)
+    async def market_conflict(_request, exc):
+        return error_response("conflict", str(exc), 409)
+
+    @app.exception_handler(CorruptVersion)
+    async def broken_market(_request, exc):
+        logging.exception("Market version file failure")
+        return error_response("version_unreadable", str(exc), 503)
+
     async def package_bytes(file: UploadFile):
         contents = await file.read(MAX_ZIP + 1)
         if not file.filename:
@@ -108,6 +129,47 @@ def create_app(engine: Engine, static_dir: Path | None = None):
     def download_version(version_id: str):
         name, data = service.download(engine, version_id)
         return Response(data, media_type='application/octet-stream', headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name, safe='')}"})
+
+    @app.get('/api/market/search', response_model=MarketSearch, operation_id='search_market', responses=ERROR_RESPONSES)
+    def search_market(symbol: str, period: str, from_date: str, to_date: str, market: str | None = None):
+        return market_service.search(engine, market_store, symbol, period, from_date, to_date, market)
+
+    @app.get('/api/market/sources', response_model=list[MarketSource], operation_id='market_sources', responses=ERROR_RESPONSES)
+    def market_sources():
+        return market_service.source_list(engine)
+
+    @app.post('/api/market/drafts', response_model=MarketDraft, status_code=201, operation_id='stage_market', responses=ERROR_RESPONSES)
+    async def stage_market(file: UploadFile = File(...), target_dataset_id: str | None = None, _token: str = Header(alias='X-Lightning-Token')):
+        raw = await file.read(30_000_001)
+        return market_service.stage(engine, market_store, file.filename or '', raw, target_dataset_id)
+
+    @app.post('/api/market/drafts/{draft_id}/preview', response_model=MarketPreview, operation_id='preview_market', responses=ERROR_RESPONSES)
+    def preview_market(draft_id: str, choice: MarketPreviewChoice, _token: str = Header(alias='X-Lightning-Token')):
+        return market_service.preview(engine, market_store, draft_id, choice.volume_unit, choice.minute_position, choice.exchange)
+
+    @app.post('/api/market/drafts/{draft_id}/compare', response_model=MarketComparison, operation_id='compare_market', responses=ERROR_RESPONSES)
+    def compare_market(draft_id: str, choice: MarketImportChoice, page: int = Query(1, ge=1), _token: str = Header(alias='X-Lightning-Token')):
+        return market_service.compare(engine, market_store, draft_id, choice, page)
+
+    @app.post('/api/market/drafts/{draft_id}/publish', response_model=MarketResult, operation_id='publish_market', responses=ERROR_RESPONSES)
+    def publish_market(draft_id: str, choice: MarketConfirmChoice, _token: str = Header(alias='X-Lightning-Token')):
+        return market_service.publish(engine, market_store, draft_id, choice, choice.confirmation)
+
+    @app.get('/api/market/drafts/{draft_id}/result', response_model=MarketResult, operation_id='market_draft_result', responses=ERROR_RESPONSES)
+    def market_draft_result(draft_id: str):
+        return market_service.result(engine, draft_id)
+
+    @app.get('/api/market/versions/{version_id}/import-record', response_model=MarketImportRecord, operation_id='market_import_record', responses=ERROR_RESPONSES)
+    def market_import_record(version_id: str):
+        return market_service.import_record(engine, version_id)
+
+    @app.get('/api/market/datasets/{dataset_id}/versions', response_model=list[MarketVersion], operation_id='market_versions', responses=ERROR_RESPONSES)
+    def market_versions(dataset_id: str):
+        return market_service.version_list(engine, dataset_id)
+
+    @app.get('/api/market/datasets/{dataset_id}/versions/{version_id}/chart', response_model=MarketChart, operation_id='market_chart', responses=ERROR_RESPONSES)
+    def market_chart(dataset_id: str, version_id: str, symbol: str, from_date: str, to_date: str, exchange: str | None = None, start: str | None = None, end: str | None = None):
+        return market_service.chart(engine, market_store, dataset_id, version_id, symbol, from_date, to_date, exchange, start, end)
 
     static = static_dir or (Path(__file__).resolve().parents[2] / 'web/dist')
     if static.is_dir():

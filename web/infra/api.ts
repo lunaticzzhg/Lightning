@@ -48,3 +48,16 @@ export const api = {
     return { blob, fileName }
   },
 }
+
+export const marketApi = {
+  sources: async () => unwrap(await client.GET('/api/market/sources')),
+  search: async (symbol: string, period: string, fromDate: string, toDate: string, market?: string) => unwrap(await client.GET('/api/market/search', { params: { query: { symbol, period, from_date: fromDate, to_date: toDate, market } } })),
+  stage: async (file: File, targetDatasetId?: string) => unwrap(await client.POST('/api/market/drafts', { params: { header: { 'X-Lightning-Token': token }, query: { target_dataset_id: targetDatasetId } }, body: { file }, bodySerializer: multipart })),
+  preview: async (draftId: string, volumeUnit: string, minutePosition?: string, exchange?: string) => unwrap(await client.POST('/api/market/drafts/{draft_id}/preview', { params: { path: { draft_id: draftId }, header: { 'X-Lightning-Token': token } }, body: { volume_unit: volumeUnit, minute_position: minutePosition, exchange } })),
+  compare: async (draftId: string, body: import('./openapi').components['schemas']['MarketImportChoice'], page = 1) => unwrap(await client.POST('/api/market/drafts/{draft_id}/compare', { params: { path: { draft_id: draftId }, query: { page }, header: { 'X-Lightning-Token': token } }, body })),
+  publish: async (draftId: string, body: import('./openapi').components['schemas']['MarketConfirmChoice']) => unwrap(await client.POST('/api/market/drafts/{draft_id}/publish', { params: { path: { draft_id: draftId }, header: { 'X-Lightning-Token': token } }, body })),
+  result: async (draftId: string) => unwrap(await client.GET('/api/market/drafts/{draft_id}/result', { params: { path: { draft_id: draftId } } })),
+  importRecord: async (versionId: string) => unwrap(await client.GET('/api/market/versions/{version_id}/import-record', { params: { path: { version_id: versionId } } })),
+  versions: async (datasetId: string) => unwrap(await client.GET('/api/market/datasets/{dataset_id}/versions', { params: { path: { dataset_id: datasetId } } })),
+  chart: async (datasetId: string, versionId: string, symbol: string, fromDate: string, toDate: string, exchange?: string, start?: string, end?: string) => unwrap(await client.GET('/api/market/datasets/{dataset_id}/versions/{version_id}/chart', { params: { path: { dataset_id: datasetId, version_id: versionId }, query: { symbol, from_date: fromDate, to_date: toDate, exchange, start, end } } })),
+}

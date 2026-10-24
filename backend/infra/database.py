@@ -62,3 +62,39 @@ def make_engine(url=None) -> Engine:
 def ensure_schema(engine: Engine):
     """First-install bootstrap only. Existing schemas must be upgraded separately."""
     metadata.create_all(engine)
+
+# REQ-002: a source and dataset are identities; versions are immutable snapshots.
+from sqlalchemy import Text
+market_sources = Table('market_sources', metadata,
+    Column('id', String(36), primary_key=True),
+    Column('provider', String(255), nullable=False), Column('product', String(255), nullable=False),
+    UniqueConstraint('provider', 'product'))
+market_datasets = Table('market_datasets', metadata,
+    Column('id', String(36), primary_key=True),
+    Column('source_id', String(36), ForeignKey('market_sources.id', ondelete='RESTRICT'), nullable=False),
+    Column('market', String(16), nullable=False), Column('period', String(16), nullable=False),
+    Column('price_mode', String(64), nullable=False), Column('adjustment', String(255), nullable=False, default=''),
+    Column('reference_date', String(10), nullable=False, default=''), Column('session', String(16), nullable=False),
+    UniqueConstraint('source_id', 'market', 'period', 'price_mode', 'adjustment', 'reference_date', 'session'))
+market_drafts = Table('market_drafts', metadata,
+    Column('id', String(36), primary_key=True), Column('file_name', String(255), nullable=False),
+    Column('raw_path', String(255), nullable=False), Column('sha256', String(64), nullable=False),
+    Column('period', String(16), nullable=False), Column('market', String(16), nullable=False),
+    Column('summary', JSON, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('result', JSON(none_as_null=True), nullable=True))
+market_imports = Table('market_imports', metadata,
+    Column('id', String(36), primary_key=True),
+    Column('dataset_id', String(36), ForeignKey('market_datasets.id', ondelete='RESTRICT'), nullable=False),
+    Column('draft_id', String(36), ForeignKey('market_drafts.id', ondelete='RESTRICT'), nullable=False, unique=True),
+    Column('file_name', String(255), nullable=False), Column('raw_path', String(255), nullable=False),
+    Column('sha256', String(64), nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('summary', JSON, nullable=False))
+market_versions = Table('market_versions', metadata,
+    Column('id', String(36), primary_key=True),
+    Column('dataset_id', String(36), ForeignKey('market_datasets.id', ondelete='RESTRICT'), nullable=False),
+    Column('import_id', String(36), ForeignKey('market_imports.id', ondelete='RESTRICT'), nullable=False, unique=True),
+    Column('number', Integer, nullable=False), Column('previous_id', String(36), nullable=True),
+    Column('parquet_path', String(255), nullable=False), Column('parquet_sha256', String(64), nullable=False),
+    Column('files', JSON, nullable=False), Column('coverage', JSON, nullable=False), Column('row_count', Integer, nullable=False), Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('warning_rules', JSON, nullable=False), Column('warnings', JSON, nullable=False),
+    UniqueConstraint('dataset_id', 'number'))

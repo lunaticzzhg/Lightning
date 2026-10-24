@@ -20,8 +20,9 @@ RUN npm run generate:api -- --schema /tmp/lightning-openapi.json && npm run buil
 FROM contract AS app
 COPY scripts/migrate.py scripts/migrate.py
 COPY scripts/snapshot.py scripts/snapshot.py
+COPY scripts/prune_market.py scripts/prune_market.py
 COPY --from=web-build /src/web/dist web/dist
-RUN useradd --uid 10001 --create-home lightning
+RUN useradd --uid 10001 --create-home lightning && mkdir -p /srv/market && chown lightning:lightning /srv/market
 USER lightning
 EXPOSE 8000
 CMD ["python", "-m", "backend.app.main"]

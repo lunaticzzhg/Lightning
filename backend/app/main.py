@@ -13,7 +13,7 @@ def run():
     if not (static / 'index.html').is_file():
         raise RuntimeError('缺少已构建的管理页面')
     uvicorn.run(
-        create_app(make_engine(), static_dir=static),
+        create_app(make_engine(), static_dir=static, market_dir=Path(os.environ.get('LIGHTNING_MARKET_DIR', '/srv/market'))),
         host='0.0.0.0',
         port=int(os.environ.get('LIGHTNING_PORT', '8000')),
         proxy_headers=True,

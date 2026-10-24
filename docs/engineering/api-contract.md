@@ -2,7 +2,7 @@
 
 ## 结论
 
-管理接口以 **FastAPI 路由和 Pydantic 模型**为唯一来源。FastAPI 导出 OpenAPI，`openapi-typescript` 据此生成 TypeScript 类型，前端使用 `openapi-fetch` 发请求。不要手写或维护第二份 OpenAPI JSON、接口路径表和响应类型。
+前后端接口只在后端定义一次：**FastAPI 路由**定义请求入口和状态码，**Pydantic 模型**定义输入与输出。后端导出的 **OpenAPI** 是供工具读取的接口说明；前端据此生成 TypeScript 类型并发请求。不要手写第二份接口说明、路径表或响应类型。
 
 ```text
 FastAPI 路由 + Pydantic 模型
